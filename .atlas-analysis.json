@@ -1,0 +1,112 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "React Doctor",
+  "projectDescription": "A diagnostic CLI tool that scans React codebases for security, performance, correctness, and architecture issues",
+  "theme": "aspen",
+  "primaryColor": "#3B82F6",
+  "lightColor": "#60A5FA",
+  "darkColor": "#2563EB",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Usage",
+            "pages": [
+              "usage/cli-commands",
+              "usage/configuration",
+              "usage/github-actions",
+              "usage/nodejs-api"
+            ]
+          },
+          {
+            "group": "Rules Reference",
+            "pages": [
+              "rules/overview",
+              "rules/state-and-effects",
+              "rules/performance",
+              "rules/architecture",
+              "rules/bundle-size",
+              "rules/security",
+              "rules/correctness",
+              "rules/accessibility",
+              "rules/nextjs",
+              "rules/react-native",
+              "rules/dead-code"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/understanding-scores",
+              "guides/coding-agents",
+              "guides/monorepo-projects",
+              "guides/diff-mode",
+              "guides/troubleshooting"
+            ]
+          },
+          {
+            "group": "Examples",
+            "pages": [
+              "examples/basic-usage",
+              "examples/ci-cd-integration",
+              "examples/pre-commit-hooks",
+              "examples/custom-workflows"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "CLI",
+            "pages": [
+              "api/cli-reference"
+            ]
+          },
+          {
+            "group": "Node.js API",
+            "pages": [
+              "api/diagnose",
+              "api/types"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Scans 60+ rules across multiple categories (state, performance, security, architecture)",
+    "Automatic framework detection (Next.js, Vite, Remix, Expo, React Native)",
+    "0-100 health score based on error and warning severity",
+    "Dead code detection for unused files, exports, and types",
+    "Diff mode to scan only changed files",
+    "GitHub Actions integration with PR comments",
+    "Coding agent skills for Cursor, Claude, OpenCode, and more",
+    "Node.js programmatic API for custom integrations"
+  ],
+  "publicApiSurface": [
+    "react-doctor [directory] [options]",
+    "diagnose(directory, options)",
+    "getDiffInfo(directory, baseBranch)",
+    "filterSourceFiles(files, directory)",
+    "--verbose",
+    "--score",
+    "--diff [base]",
+    "--project <name>",
+    "--fix",
+    "--no-lint",
+    "--no-dead-code",
+    "--fail-on <level>"
+  ]
+}
