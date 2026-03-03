@@ -92,7 +92,7 @@ if (!projectInfo.reactVersion) {
 ### Basic usage
 
 ```typescript
-import { diagnose } from 'react-doctor';
+import { diagnose } from 'react-doctor/api';
 
 const result = await diagnose('./my-app');
 
@@ -104,7 +104,7 @@ console.log(`Completed in ${result.elapsedMilliseconds}ms`);
 ### With options
 
 ```typescript
-import { diagnose } from 'react-doctor';
+import { diagnose } from 'react-doctor/api';
 
 const result = await diagnose('./my-app', {
   lint: true,
@@ -120,7 +120,7 @@ for (const diagnostic of result.diagnostics) {
 ### Diff mode (scan specific files)
 
 ```typescript
-import { diagnose, getDiffInfo, filterSourceFiles } from 'react-doctor';
+import { diagnose, getDiffInfo, filterSourceFiles } from 'react-doctor/api';
 
 // Get changed files from git
 const diffInfo = getDiffInfo('./my-app');
@@ -138,7 +138,7 @@ console.log(`Found ${result.diagnostics.length} issues in changes`);
 ### Error handling
 
 ```typescript
-import { diagnose } from 'react-doctor';
+import { diagnose } from 'react-doctor/api';
 
 try {
   const result = await diagnose('./my-app');
@@ -156,7 +156,7 @@ try {
 ### CI integration
 
 ```typescript
-import { diagnose } from 'react-doctor';
+import { diagnose } from 'react-doctor/api';
 
 const result = await diagnose(process.cwd(), {
   lint: true,

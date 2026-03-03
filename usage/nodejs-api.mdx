@@ -14,7 +14,7 @@ npm install react-doctor
 ## Basic Usage
 
 ```typescript
-import { diagnose } from 'react-doctor';
+import { diagnose } from 'react-doctor/api';
 
 const result = await diagnose('./my-project');
 console.log(`Score: ${result.score?.score}`);
@@ -167,7 +167,7 @@ interface ReactDoctorConfig {
 ### Basic Scan
 
 ```typescript
-import { diagnose } from 'react-doctor';
+import { diagnose } from 'react-doctor/api';
 
 async function scanProject() {
   const result = await diagnose('./src');
@@ -188,7 +188,7 @@ scanProject();
 Disable dead code detection:
 
 ```typescript
-import { diagnose } from 'react-doctor';
+import { diagnose } from 'react-doctor/api';
 
 const result = await diagnose('./src', {
   lint: true,
@@ -203,7 +203,7 @@ console.log(`Found ${result.diagnostics.length} linting issues`);
 Scan only specific files (useful for pre-commit hooks):
 
 ```typescript
-import { diagnose, getDiffInfo, filterSourceFiles } from 'react-doctor';
+import { diagnose, getDiffInfo, filterSourceFiles } from 'react-doctor/api';
 
 const diffInfo = getDiffInfo('./src', 'main');
 if (diffInfo) {
@@ -223,7 +223,7 @@ if (diffInfo) {
 Group and analyze diagnostics:
 
 ```typescript
-import { diagnose } from 'react-doctor';
+import { diagnose } from 'react-doctor/api';
 
 const result = await diagnose('./src');
 
@@ -259,7 +259,7 @@ for (const [file, diagnostics] of Object.entries(byFile)) {
 Generate custom reports:
 
 ```typescript
-import { diagnose } from 'react-doctor';
+import { diagnose } from 'react-doctor/api';
 import fs from 'fs';
 
 const result = await diagnose('./src');
@@ -288,7 +288,7 @@ console.log('Reports generated!');
 Use in a Node.js CI script:
 
 ```typescript
-import { diagnose } from 'react-doctor';
+import { diagnose } from 'react-doctor/api';
 
 async function ciCheck() {
   try {
@@ -323,7 +323,7 @@ ciCheck();
 Create a pre-commit hook using Husky:
 
 ```typescript pre-commit.ts
-import { diagnose, getDiffInfo, filterSourceFiles } from 'react-doctor';
+import { diagnose, getDiffInfo, filterSourceFiles } from 'react-doctor/api';
 import { execSync } from 'child_process';
 
 async function preCommitCheck() {
@@ -370,7 +370,7 @@ preCommitCheck();
 Implement file watching:
 
 ```typescript
-import { diagnose } from 'react-doctor';
+import { diagnose } from 'react-doctor/api';
 import chokidar from 'chokidar';
 import path from 'path';
 
@@ -431,7 +431,7 @@ console.log('Watching for changes...');
 Get git diff information:
 
 ```typescript
-import { getDiffInfo } from 'react-doctor';
+import { getDiffInfo } from 'react-doctor/api';
 
 const diffInfo = getDiffInfo('./src', 'main');
 if (diffInfo) {
@@ -446,7 +446,7 @@ if (diffInfo) {
 Filter for React/TypeScript source files:
 
 ```typescript
-import { filterSourceFiles } from 'react-doctor';
+import { filterSourceFiles } from 'react-doctor/api';
 
 const allFiles = ['src/App.tsx', 'README.md', 'src/utils.ts'];
 const sourceFiles = filterSourceFiles(allFiles);
@@ -456,7 +456,7 @@ const sourceFiles = filterSourceFiles(allFiles);
 ## Error Handling
 
 ```typescript
-import { diagnose } from 'react-doctor';
+import { diagnose } from 'react-doctor/api';
 
 try {
   const result = await diagnose('./src');

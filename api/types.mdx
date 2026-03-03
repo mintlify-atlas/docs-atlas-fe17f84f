@@ -395,7 +395,7 @@ export function filterSourceFiles(files: string[]): string[]
 ### Type-safe diagnostic handling
 
 ```typescript
-import type { Diagnostic } from 'react-doctor';
+import type { Diagnostic } from 'react-doctor/api';
 
 function groupDiagnosticsBySeverity(diagnostics: Diagnostic[]) {
   const errors = diagnostics.filter(d => d.severity === 'error');
@@ -408,7 +408,7 @@ function groupDiagnosticsBySeverity(diagnostics: Diagnostic[]) {
 ### Custom score display
 
 ```typescript
-import type { ScoreResult } from 'react-doctor';
+import type { ScoreResult } from 'react-doctor/api';
 
 function formatScore(score: ScoreResult | null): string {
   if (!score) return 'N/A';
@@ -424,7 +424,7 @@ function formatScore(score: ScoreResult | null): string {
 ### Working with project info
 
 ```typescript
-import type { ProjectInfo, Framework } from 'react-doctor';
+import type { ProjectInfo, Framework } from 'react-doctor/api';
 
 function getFrameworkDisplayName(framework: Framework): string {
   const names: Record<Framework, string> = {
