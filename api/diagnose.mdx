@@ -1,0 +1,187 @@
+---
+title: diagnose()
+description: Programmatic API for diagnosing React codebase health
+---
+
+## Function Signature
+
+```typescript
+export const diagnose = async (
+  directory: string,
+  options: DiagnoseOptions = {},
+): Promise<DiagnoseResult>
+```
+
+The `diagnose()` function is the primary programmatic API for React Doctor. It analyzes a React codebase and returns diagnostics, score, and project information.
+
+## Parameters
+
+<ParamField path="directory" type="string" required>
+  Absolute or relative path to the project directory to scan.
+</ParamField>
+
+<ParamField path="options" type="DiagnoseOptions" default="{}">
+  Configuration options for the diagnosis.
+  
+  <Expandable title="DiagnoseOptions properties">
+    <ParamField path="lint" type="boolean" default="true">
+      Enable linting checks using oxlint. Defaults to `true` unless overridden by config file.
+    </ParamField>
+    
+    <ParamField path="deadCode" type="boolean" default="true">
+      Enable dead code detection using Knip. Defaults to `true` unless overridden by config file.
+      
+      **Note:** Dead code analysis is automatically skipped when `includePaths` is provided (diff mode).
+    </ParamField>
+    
+    <ParamField path="includePaths" type="string[]" default="[]">
+      Array of file paths to scan. When provided, enables "diff mode" and only scans the specified files.
+      
+      **Note:** Dead code detection is automatically disabled in diff mode.
+      
+      ```typescript
+      {
+        includePaths: [
+          'src/components/Button.tsx',
+          'src/utils/format.ts'
+        ]
+      }
+      ```
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Return Value
+
+<ResponseField name="DiagnoseResult" type="object">
+  The result of the diagnosis operation.
+  
+  <Expandable title="DiagnoseResult properties">
+    <ResponseField name="diagnostics" type="Diagnostic[]">
+      Array of diagnostic issues found in the codebase. See [Diagnostic type](/api/types#diagnostic).
+    </ResponseField>
+    
+    <ResponseField name="score" type="ScoreResult | null">
+      Overall codebase health score, or `null` if calculation failed. See [ScoreResult type](/api/types#scoreresult).
+    </ResponseField>
+    
+    <ResponseField name="project" type="ProjectInfo">
+      Information about the analyzed project. See [ProjectInfo type](/api/types#projectinfo).
+    </ResponseField>
+    
+    <ResponseField name="elapsedMilliseconds" type="number">
+      Time taken to complete the diagnosis in milliseconds.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Errors
+
+The function throws an error if:
+- No React dependency is found in `package.json`
+- The directory path is invalid or inaccessible
+
+```typescript
+if (!projectInfo.reactVersion) {
+  throw new Error("No React dependency found in package.json");
+}
+```
+
+## Examples
+
+### Basic usage
+
+```typescript
+import { diagnose } from 'react-doctor';
+
+const result = await diagnose('./my-app');
+
+console.log(`Found ${result.diagnostics.length} issues`);
+console.log(`Score: ${result.score?.score}`);
+console.log(`Completed in ${result.elapsedMilliseconds}ms`);
+```
+
+### With options
+
+```typescript
+import { diagnose } from 'react-doctor';
+
+const result = await diagnose('./my-app', {
+  lint: true,
+  deadCode: false,
+});
+
+for (const diagnostic of result.diagnostics) {
+  console.log(`${diagnostic.severity}: ${diagnostic.message}`);
+  console.log(`  at ${diagnostic.filePath}:${diagnostic.line}:${diagnostic.column}`);
+}
+```
+
+### Diff mode (scan specific files)
+
+```typescript
+import { diagnose, getDiffInfo, filterSourceFiles } from 'react-doctor';
+
+// Get changed files from git
+const diffInfo = getDiffInfo('./my-app');
+const changedFiles = diffInfo ? filterSourceFiles(diffInfo.changedFiles) : [];
+
+// Scan only changed files
+const result = await diagnose('./my-app', {
+  includePaths: changedFiles,
+});
+
+console.log(`Scanned ${changedFiles.length} changed files`);
+console.log(`Found ${result.diagnostics.length} issues in changes`);
+```
+
+### Error handling
+
+```typescript
+import { diagnose } from 'react-doctor';
+
+try {
+  const result = await diagnose('./my-app');
+  
+  if (result.diagnostics.some(d => d.severity === 'error')) {
+    console.error('Critical errors found!');
+    process.exit(1);
+  }
+} catch (error) {
+  console.error('Diagnosis failed:', error.message);
+  process.exit(1);
+}
+```
+
+### CI integration
+
+```typescript
+import { diagnose } from 'react-doctor';
+
+const result = await diagnose(process.cwd(), {
+  lint: true,
+  deadCode: true,
+});
+
+const errorCount = result.diagnostics.filter(d => d.severity === 'error').length;
+const warningCount = result.diagnostics.filter(d => d.severity === 'warning').length;
+
+console.log(`Errors: ${errorCount}, Warnings: ${warningCount}`);
+console.log(`Score: ${result.score?.score} (${result.score?.label})`);
+
+if (errorCount > 0) {
+  process.exit(1);
+}
+```
+
+## Configuration File
+
+The `diagnose()` function automatically loads configuration from `react-doctor.config.json` in the project directory. Options passed to the function take precedence over config file settings.
+
+See [Configuration](/usage/configuration) for more details.
+
+## Related
+
+- [Types Reference](/api/types) - TypeScript type definitions
+- [Utility Functions](/api/types#utility-functions) - `getDiffInfo()` and `filterSourceFiles()`
+- [Configuration](/usage/configuration) - Config file format

@@ -1,0 +1,301 @@
+---
+title: CLI Commands
+description: Complete command-line interface reference for React Doctor
+---
+
+## Basic Usage
+
+Run React Doctor in your project directory:
+
+```bash
+npx react-doctor@latest
+```
+
+Scan a specific directory:
+
+```bash
+npx react-doctor@latest ./my-project
+```
+
+## Commands
+
+### Main Command
+
+The main command scans your React codebase for issues.
+
+```bash
+react-doctor [directory] [options]
+```
+
+<ParamField path="directory" type="string" default=".">
+  Project directory to scan
+</ParamField>
+
+### Fix Command
+
+Open Ami to automatically fix detected issues.
+
+```bash
+react-doctor fix [directory]
+```
+
+### Install Ami Command
+
+Install Ami and open it to fix issues.
+
+```bash
+react-doctor install-ami [directory]
+```
+
+## Options
+
+### Linting Options
+
+<ParamField path="--lint" type="boolean" default="true">
+  Enable linting checks using oxlint
+</ParamField>
+
+<ParamField path="--no-lint" type="boolean">
+  Skip linting checks
+</ParamField>
+
+**Example:**
+```bash
+npx react-doctor --no-lint
+```
+
+### Dead Code Detection
+
+<ParamField path="--dead-code" type="boolean" default="true">
+  Enable dead code detection using Knip
+</ParamField>
+
+<ParamField path="--no-dead-code" type="boolean">
+  Skip dead code detection
+</ParamField>
+
+**Example:**
+```bash
+npx react-doctor --no-dead-code
+```
+
+### Output Options
+
+<ParamField path="--verbose" type="boolean" default="false">
+  Show file details per rule, including line numbers for each diagnostic
+</ParamField>
+
+<ParamField path="--score" type="boolean" default="false">
+  Output only the score (0-100) without diagnostics
+</ParamField>
+
+**Examples:**
+```bash
+# Show detailed file information
+npx react-doctor --verbose
+
+# Get just the score
+npx react-doctor --score
+```
+
+### Project Selection
+
+<ParamField path="--project" type="string">
+  Select workspace project(s) to scan. Comma-separated for multiple projects.
+</ParamField>
+
+<ParamField path="-y, --yes" type="boolean" default="false">
+  Skip prompts and scan all workspace projects
+</ParamField>
+
+**Examples:**
+```bash
+# Scan a specific project in a monorepo
+npx react-doctor --project web
+
+# Scan multiple projects
+npx react-doctor --project web,mobile
+
+# Skip all prompts
+npx react-doctor -y
+```
+
+### Diff Mode
+
+<ParamField path="--diff [base]" type="boolean | string">
+  Scan only files changed vs base branch. If no base branch is specified, compares against uncommitted changes or the default base branch.
+</ParamField>
+
+**Examples:**
+```bash
+# Scan only changed files vs main
+npx react-doctor --diff main
+
+# Auto-detect changes
+npx react-doctor --diff
+```
+
+<Note>
+Diff mode automatically disables dead code detection since it requires a full codebase scan.
+</Note>
+
+### Error Handling
+
+<ParamField path="--fail-on" type="string" default="none">
+  Exit with error code on diagnostics. Valid values: `error`, `warning`, `none`
+</ParamField>
+
+**Examples:**
+```bash
+# Fail only on errors
+npx react-doctor --fail-on error
+
+# Fail on warnings and errors
+npx react-doctor --fail-on warning
+
+# Never fail (useful for CI reporting)
+npx react-doctor --fail-on none
+```
+
+### Telemetry
+
+<ParamField path="--offline" type="boolean" default="false">
+  Skip telemetry. Telemetry is anonymous, not stored, and only used to calculate your health score.
+</ParamField>
+
+**Example:**
+```bash
+npx react-doctor --offline
+```
+
+### Ami Integration
+
+<ParamField path="--fix" type="boolean" default="false">
+  Open Ami to auto-fix all detected issues
+</ParamField>
+
+<ParamField path="--no-ami" type="boolean" default="false">
+  Skip Ami-related prompts
+</ParamField>
+
+**Examples:**
+```bash
+# Scan and immediately open Ami to fix
+npx react-doctor --fix
+
+# Disable Ami prompts in CI
+npx react-doctor --no-ami
+```
+
+### Version
+
+<ParamField path="-v, --version" type="boolean">
+  Display the version number
+</ParamField>
+
+**Example:**
+```bash
+react-doctor --version
+```
+
+## Common Workflows
+
+<CodeGroup>
+```bash Quick Scan
+# Basic scan with default settings
+npx react-doctor@latest
+```
+
+```bash CI Integration
+# Non-interactive mode with error exit codes
+npx react-doctor --fail-on error -y --no-ami
+```
+
+```bash PR Review
+# Scan only changed files
+npx react-doctor --diff main --verbose
+```
+
+```bash Monorepo
+# Scan specific workspace projects
+npx react-doctor --project api,web --verbose
+```
+
+```bash Performance Only
+# Skip dead code detection for faster scans
+npx react-doctor --no-dead-code
+```
+
+```bash Get Score
+# Just get the health score
+npx react-doctor --score
+```
+</CodeGroup>
+
+## Exit Codes
+
+React Doctor uses exit codes to indicate scan results:
+
+- `0`: Success (or no failures based on `--fail-on` setting)
+- `1`: Diagnostics detected that match the `--fail-on` level
+
+**Example CI usage:**
+```bash
+npx react-doctor --fail-on error
+if [ $? -eq 0 ]; then
+  echo "No errors found"
+else
+  echo "Errors detected, failing build"
+  exit 1
+fi
+```
+
+## Environment Variables
+
+React Doctor detects automated environments and adjusts behavior accordingly:
+
+- `CI`: Continuous Integration
+- `CLAUDECODE`: Claude Code
+- `CURSOR_AGENT`: Cursor Agent
+- `OPENCODE`: OpenCode
+- `AMI`: Ami environment
+
+When these are set, React Doctor:
+- Skips interactive prompts
+- Scans all workspace projects automatically
+- Disables Ami installation prompts
+
+## Output
+
+### Standard Output
+
+A typical scan produces:
+
+1. **Project Detection**: Framework, React version, TypeScript/JavaScript
+2. **Diagnostics**: Grouped by rule with severity, message, and help text
+3. **Summary**: Health score, error/warning counts, affected files
+4. **Full Report**: Diagnostics written to `/tmp/react-doctor-{uuid}/`
+
+### Verbose Output
+
+With `--verbose`, each diagnostic includes:
+- File paths
+- Line numbers for each occurrence
+- Detailed context
+
+**Example:**
+```bash
+  ✗ useEffect dependencies array is missing dependencies (2)
+    Ensure all dependencies are included in the array
+    src/components/Header.tsx: 45, 67
+    src/pages/Dashboard.tsx: 123
+```
+
+### Score-Only Output
+
+With `--score`, outputs a single number (0-100):
+
+```bash
+$ npx react-doctor --score
+87
+```

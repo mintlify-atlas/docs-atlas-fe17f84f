@@ -1,0 +1,281 @@
+---
+title: Using with Coding Agents
+description: Integrate React Doctor with Cursor, Claude, OpenCode, and other AI coding assistants
+---
+
+React Doctor has built-in support for coding agents, teaching them React best practices and automatically running health checks.
+
+## Installation for Agents
+
+Install React Doctor as a skill for your coding agent:
+
+```bash
+curl -fsSL https://react.doctor/install-skill.sh | bash
+```
+
+This command works with:
+
+- **Cursor** (Cursor Agent)
+- **Claude Code** (Anthropic)
+- **OpenCode** (open-source)
+- **Amp Code**
+- **Codex**
+- **Gemini CLI**
+- **Windsurf**
+- **Antigravity**
+
+<Info>
+  The skill teaches agents about 47+ React best practice rules so they avoid common issues while coding.
+</Info>
+
+## What the Skill Does
+
+After installation, your coding agent:
+
+1. **Learns React best practices** - Understands all React Doctor rules
+2. **Runs checks automatically** - Scans code after making changes
+3. **Suggests fixes** - Recommends solutions based on diagnostics
+4. **Validates improvements** - Re-runs scans to verify fixes worked
+
+## Agent Workflow
+
+Coding agents use React Doctor in a verify-fix-verify loop:
+
+<Steps>
+  <Step title="Make changes">
+    Agent modifies your React code (new feature, bug fix, refactor)
+  </Step>
+  
+  <Step title="Run scan">
+    Agent executes `npx react-doctor . --verbose --diff` to check changes
+  </Step>
+  
+  <Step title="Review diagnostics">
+    Agent reads errors and warnings, prioritizes critical issues
+  </Step>
+  
+  <Step title="Apply fixes">
+    Agent resolves issues one by one, starting with errors
+  </Step>
+  
+  <Step title="Verify improvements">
+    Agent re-runs React Doctor to confirm the score improved
+  </Step>
+</Steps>
+
+<Tip>
+  Agents automatically use `--diff` mode to scan only changed files, making checks fast even in large codebases.
+</Tip>
+
+## Manual Agent Commands
+
+You can also ask your coding agent to run React Doctor manually:
+
+### Full Scan
+
+```bash
+npx -y react-doctor@latest . --verbose
+```
+
+### Scan Only Changes
+
+```bash
+npx -y react-doctor@latest . --verbose --diff
+```
+
+### Get Score Only
+
+```bash
+npx -y react-doctor@latest . --score
+```
+
+The agent will parse the output and suggest fixes based on diagnostics.
+
+## Automated Environment Detection
+
+React Doctor automatically detects when it's running inside a coding agent by checking environment variables:
+
+- `CLAUDECODE` - Claude Code
+- `CURSOR_AGENT` - Cursor Agent
+- `OPENCODE` - OpenCode
+- `CODEX_CI` - Codex
+- `AMP_HOME` - Amp Code
+- `AMI` - Ami
+
+When detected, React Doctor:
+
+- **Skips interactive prompts** (runs non-interactively)
+- **Outputs machine-readable diagnostics**
+- **Suggests appropriate fixes** for the agent to apply
+
+<Info>
+  You don't need to configure anything. React Doctor automatically adjusts its behavior when running in agent environments.
+</Info>
+
+## Best Practices for Agents
+
+### 1. Run After Each Change
+
+Agents should run React Doctor after completing a feature or fix:
+
+```typescript
+// Agent pseudocode
+async function completeTask() {
+  await makeCodeChanges();
+  const result = await exec('npx react-doctor . --diff');
+  if (result.hasErrors) {
+    await applyFixes(result.diagnostics);
+    await exec('npx react-doctor . --diff'); // Verify
+  }
+}
+```
+
+### 2. Use Diff Mode for Speed
+
+Always use `--diff` to scan only changed files:
+
+```bash
+npx react-doctor . --verbose --diff
+```
+
+This is much faster than full scans and focuses on your changes.
+
+### 3. Fix Errors Before Warnings
+
+Agents should prioritize errors (severity: "error") over warnings:
+
+```typescript
+const errors = diagnostics.filter(d => d.severity === 'error');
+const warnings = diagnostics.filter(d => d.severity === 'warning');
+
+// Fix errors first
+for (const error of errors) {
+  await fixIssue(error);
+}
+```
+
+### 4. Verify Score Improvements
+
+After fixes, re-run to confirm the score increased:
+
+```bash
+npx react-doctor . --score
+```
+
+<Warning>
+  If the score doesn't improve after fixes, the agent may have introduced new issues. Re-run with `--verbose` to debug.
+</Warning>
+
+## Using the Node.js API
+
+Agents can use the programmatic API instead of CLI:
+
+```typescript
+import { diagnose } from "react-doctor/api";
+
+const result = await diagnose("./path/to/react-project", {
+  lint: true,
+  deadCode: true,
+});
+
+console.log(result.score); // { score: 82, label: "Good" }
+console.log(result.diagnostics); // Array of issues
+```
+
+Each diagnostic includes:
+
+```typescript
+interface Diagnostic {
+  filePath: string;
+  plugin: string;
+  rule: string;
+  severity: "error" | "warning";
+  message: string;
+  help: string;
+  line: number;
+  column: number;
+  category: string;
+}
+```
+
+## Skill Configuration
+
+The React Doctor skill is defined at `skills/react-doctor/SKILL.md`:
+
+```yaml
+---
+name: react-doctor
+description: Run after making React changes to catch issues early
+version: 1.0.0
+---
+
+Scans your React codebase for security, performance, correctness,
+and architecture issues.
+```
+
+Coding agents load this skill automatically and follow the workflow defined.
+
+## Troubleshooting Agent Integration
+
+### Skill Not Found
+
+If the agent doesn't recognize React Doctor:
+
+```bash
+# Re-install the skill
+curl -fsSL https://react.doctor/install-skill.sh | bash
+```
+
+### Agent Times Out
+
+For large codebases, use `--diff` mode or specify a project:
+
+```bash
+npx react-doctor . --project my-app --diff
+```
+
+### Agent Skips Checks
+
+Ensure Node.js version is compatible (v20.19.0+ or v22.12.0+):
+
+```bash
+node --version
+```
+
+See [Troubleshooting](/guides/troubleshooting) for Node.js version issues.
+
+## Example: OpenCode Integration
+
+Here's how OpenCode uses React Doctor:
+
+<Steps>
+  <Step title="User requests feature">
+    "Add a login form with email validation"
+  </Step>
+  
+  <Step title="OpenCode writes code">
+    Creates components, hooks, and validation logic
+  </Step>
+  
+  <Step title="OpenCode runs React Doctor">
+    `npx react-doctor . --verbose --diff`
+  </Step>
+  
+  <Step title="OpenCode reviews diagnostics">
+    Finds issues like missing error boundaries, accessibility problems
+  </Step>
+  
+  <Step title="OpenCode applies fixes">
+    Wraps form in ErrorBoundary, adds ARIA labels, fixes hooks
+  </Step>
+  
+  <Step title="OpenCode verifies">
+    Re-runs scan, confirms score improved from 72 → 84
+  </Step>
+</Steps>
+
+The entire process happens automatically without manual intervention.
+
+<Tip>
+  Coding agents work best with React Doctor when you let them run checks after every significant change.
+</Tip>

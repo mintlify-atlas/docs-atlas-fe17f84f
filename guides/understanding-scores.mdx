@@ -1,0 +1,173 @@
+---
+title: Understanding Scores
+description: Learn how React Doctor calculates health scores from 0-100
+---
+
+React Doctor produces a **0-100 health score** based on the severity and count of issues found in your codebase.
+
+## Score Scale
+
+Your codebase receives one of three ratings:
+
+<CardGroup cols={3}>
+  <Card title="Great" icon="face-smile" color="#10b981">
+    **75-100**
+    
+    Your React code follows best practices with minimal issues.
+  </Card>
+  
+  <Card title="Needs Work" icon="face-meh" color="#f59e0b">
+    **50-74**
+    
+    Several issues detected that should be addressed.
+  </Card>
+  
+  <Card title="Critical" icon="face-frown" color="#ef4444">
+    **0-49**
+    
+    Significant problems requiring immediate attention.
+  </Card>
+</CardGroup>
+
+## How Scoring Works
+
+React Doctor counts unique rule violations (not total occurrences) and applies different weights based on severity:
+
+### Error Weight
+
+Errors have a **1.5 point penalty** per unique rule violated. These are critical issues that can cause bugs, security vulnerabilities, or performance problems.
+
+### Warning Weight
+
+Warnings have a **0.75 point penalty** per unique rule. These are best practice violations that should be fixed but won't break your app.
+
+### Score Formula
+
+```
+Score = 100 - (errorRules × 1.5) - (warningRules × 0.75)
+```
+
+The score is calculated by:
+
+<Steps>
+  <Step title="Count unique rules">
+    React Doctor identifies distinct rule violations (e.g., `react/no-danger`, `knip/exports`)
+  </Step>
+  
+  <Step title="Apply severity weights">
+    Each error rule subtracts 1.5 points, each warning rule subtracts 0.75 points
+  </Step>
+  
+  <Step title="Calculate final score">
+    Start from 100 and subtract the weighted penalties, minimum score is 0
+  </Step>
+</Steps>
+
+<Info>
+  **Example:** If you have 5 unique error rules and 10 unique warning rules:
+  
+  Score = 100 - (5 × 1.5) - (10 × 0.75) = 100 - 7.5 - 7.5 = **85**
+</Info>
+
+## Why Unique Rules Matter
+
+React Doctor scores based on **distinct rule violations**, not total occurrences:
+
+- If `react/no-danger` appears in 50 files, it counts as **1 error rule**
+- This encourages fixing the root cause rather than individual instances
+- Your score improves when you eliminate entire categories of problems
+
+<Tip>
+  Focus on fixing errors first. A single error rule has the same penalty as two warning rules.
+</Tip>
+
+## Improving Your Score
+
+Here's how to raise your health score:
+
+### 1. Fix Errors First
+
+Errors have 2× the penalty of warnings. Start with error rules to see the biggest score improvements.
+
+```bash
+npx react-doctor . --verbose
+```
+
+Use `--verbose` to see which files are affected by each rule.
+
+### 2. Address High-Impact Rules
+
+Some rules affect many files. Fixing these eliminates entire categories:
+
+- **Security issues** like `react/no-danger`
+- **Performance problems** like missing `React.memo`
+- **Dead code** from unused exports
+
+### 3. Use Automated Fixes
+
+Run with `--fix` to let Ami automatically resolve issues:
+
+```bash
+npx react-doctor . --fix
+```
+
+Ami fixes errors one-by-one and re-runs the scan to verify improvements.
+
+### 4. Suppress False Positives
+
+If a rule doesn't apply to your project, add it to your config:
+
+```json react-doctor.config.json
+{
+  "ignore": {
+    "rules": ["react/no-danger"],
+    "files": ["src/generated/**"]
+  }
+}
+```
+
+<Warning>
+  Only suppress rules when you're confident they're false positives. Over-suppressing can hide real issues.
+</Warning>
+
+## Score vs. Diagnostics Count
+
+You might have 100 diagnostics but a score of 85. Here's why:
+
+- **Diagnostics** = total occurrences across all files
+- **Score** = based on unique rule violations
+
+This design rewards fixing systemic problems over patching individual instances.
+
+## Estimated Score After Fixing
+
+React Doctor can estimate your score after fixes:
+
+- Assumes **85% of errors** can be automatically fixed
+- Assumes **80% of warnings** can be automatically fixed
+- Helps you understand potential score improvements
+
+<Tip>
+  Run with `--fix` to see your estimated score and let Ami attempt automatic fixes.
+</Tip>
+
+## When Scores Aren't Calculated
+
+You'll see a message instead of a score if:
+
+- You're **offline** (scoring requires API connection)
+- You used `--offline` flag to skip telemetry
+- Some checks **failed** (incomplete results)
+
+The diagnostics are still shown, but the score isn't reliable without complete analysis.
+
+## Comparing Projects
+
+React Doctor lets you compare scores across projects. Check the [leaderboard](https://react.doctor/leaderboard) to see how popular open-source projects score.
+
+Share your results with:
+
+```bash
+npx react-doctor .
+# Outputs shareable URL at the end
+```

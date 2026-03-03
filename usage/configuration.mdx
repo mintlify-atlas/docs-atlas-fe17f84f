@@ -1,0 +1,281 @@
+---
+title: Configuration
+description: Configure React Doctor behavior with react-doctor.config.json
+---
+
+## Configuration File
+
+Create a `react-doctor.config.json` file in your project root to customize React Doctor's behavior.
+
+```json react-doctor.config.json
+{
+  "lint": true,
+  "deadCode": true,
+  "verbose": false,
+  "diff": false,
+  "failOn": "none",
+  "ignore": {
+    "rules": [],
+    "files": []
+  }
+}
+```
+
+## Configuration Options
+
+### Scan Options
+
+<ParamField path="lint" type="boolean" default="true">
+  Enable or disable linting checks using oxlint.
+</ParamField>
+
+<ParamField path="deadCode" type="boolean" default="true">
+  Enable or disable dead code detection using Knip.
+</ParamField>
+
+<ParamField path="verbose" type="boolean" default="false">
+  Show file details and line numbers for each diagnostic.
+</ParamField>
+
+**Example:**
+```json
+{
+  "lint": true,
+  "deadCode": false,
+  "verbose": true
+}
+```
+
+### Diff Mode
+
+<ParamField path="diff" type="boolean | string" default="false">
+  Enable diff mode to scan only changed files.
+  - `false`: Disabled
+  - `true`: Auto-detect changes
+  - `"branch-name"`: Compare against specific branch (e.g., `"main"`)
+</ParamField>
+
+**Examples:**
+
+<Tabs>
+  <Tab title="Disabled">
+    ```json
+    {
+      "diff": false
+    }
+    ```
+  </Tab>
+  <Tab title="Auto-detect">
+    ```json
+    {
+      "diff": true
+    }
+    ```
+  </Tab>
+  <Tab title="Specific Branch">
+    ```json
+    {
+      "diff": "main"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Error Handling
+
+<ParamField path="failOn" type="'error' | 'warning' | 'none'" default="none">
+  Control when React Doctor exits with an error code.
+  - `"error"`: Exit with code 1 only if errors are found
+  - `"warning"`: Exit with code 1 if any warnings or errors are found
+  - `"none"`: Never exit with error code
+</ParamField>
+
+**Example:**
+```json
+{
+  "failOn": "error"
+}
+```
+
+<Note>
+Use `"failOn": "error"` in CI to fail builds on errors while allowing warnings.
+</Note>
+
+### Ignore Configuration
+
+<ParamField path="ignore" type="object">
+  Configure rules and files to ignore during scanning.
+</ParamField>
+
+<ParamField path="ignore.rules" type="string[]" default="[]">
+  Array of rule identifiers to ignore. Format: `"plugin/rule-name"`
+</ParamField>
+
+<ParamField path="ignore.files" type="string[]" default="[]">
+  Array of glob patterns for files to ignore.
+</ParamField>
+
+**Example:**
+```json
+{
+  "ignore": {
+    "rules": [
+      "react-doctor/no-array-index-key",
+      "oxlint/no-unused-vars"
+    ],
+    "files": [
+      "**/*.test.tsx",
+      "**/tests/**",
+      "src/legacy/**"
+    ]
+  }
+}
+```
+
+## Complete Configuration Example
+
+```json react-doctor.config.json
+{
+  "lint": true,
+  "deadCode": true,
+  "verbose": false,
+  "diff": "main",
+  "failOn": "error",
+  "ignore": {
+    "rules": [
+      "react-doctor/no-array-index-key"
+    ],
+    "files": [
+      "**/*.test.tsx",
+      "**/*.stories.tsx",
+      "src/generated/**",
+      "dist/**",
+      "build/**"
+    ]
+  }
+}
+```
+
+## Configuration Priority
+
+React Doctor resolves configuration in the following order (highest to lowest priority):
+
+1. **CLI flags**: Explicit command-line options
+2. **Configuration file**: `react-doctor.config.json`
+3. **Defaults**: Built-in default values
+
+**Example:**
+```bash
+# CLI flag overrides config file
+npx react-doctor --no-lint
+```
+
+Even if `react-doctor.config.json` has `"lint": true`, the `--no-lint` flag takes precedence.
+
+## TypeScript Support
+
+For TypeScript projects, you can use type definitions for better autocomplete:
+
+```typescript react-doctor.config.json
+{
+  "$schema": "https://react.doctor/schema.json",
+  "lint": true,
+  "deadCode": true,
+  "verbose": false,
+  "failOn": "error"
+}
+```
+
+## Finding Rule Names
+
+To find rule names for the `ignore.rules` array:
+
+1. Run React Doctor with `--verbose` flag:
+   ```bash
+   npx react-doctor --verbose
+   ```
+
+2. Look for the rule identifier in the output:
+   ```
+   ✗ useEffect dependencies array is missing dependencies
+     Rule: react-doctor/exhaustive-deps
+   ```
+
+3. Add to your config:
+   ```json
+   {
+     "ignore": {
+       "rules": ["react-doctor/exhaustive-deps"]
+     }
+   }
+   ```
+
+## Common Patterns
+
+<CodeGroup>
+```json CI Configuration
+{
+  "lint": true,
+  "deadCode": true,
+  "verbose": true,
+  "failOn": "error",
+  "ignore": {
+    "files": [
+      "**/*.test.tsx",
+      "**/__mocks__/**"
+    ]
+  }
+}
+```
+
+```json Development Configuration
+{
+  "lint": true,
+  "deadCode": false,
+  "verbose": false,
+  "diff": "main",
+  "failOn": "none"
+}
+```
+
+```json Strict Configuration
+{
+  "lint": true,
+  "deadCode": true,
+  "verbose": true,
+  "failOn": "warning",
+  "ignore": {
+    "files": [
+      "dist/**",
+      "build/**"
+    ]
+  }
+}
+```
+
+```json Minimal Configuration
+{
+  "lint": true,
+  "deadCode": false,
+  "verbose": false
+}
+```
+</CodeGroup>
+
+## Validation
+
+React Doctor validates the configuration file on load. Invalid configurations will show an error:
+
+```bash
+Error: Invalid configuration in react-doctor.config.json
+  - failOn must be one of: "error", "warning", "none"
+  - ignore.files must be an array of strings
+```
+
+## Location
+
+Place `react-doctor.config.json` in:
+- Project root (same directory as `package.json`)
+- Workspace root for monorepos
+
+For monorepos, each workspace can have its own configuration file that overrides the root configuration.

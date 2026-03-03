@@ -1,0 +1,613 @@
+---
+title: Troubleshooting
+description: Common issues and solutions for React Doctor
+---
+
+Solutions to common problems when using React Doctor.
+
+## Node.js Version Issues
+
+React Doctor requires specific Node.js versions for lint checks.
+
+### Required Version
+
+Oxlint (the linter used by React Doctor) requires:
+
+<Info>
+  **Node.js ^20.19.0 or >=22.12.0**
+</Info>
+
+Check your version:
+
+```bash
+node --version
+```
+
+### Unsupported Node.js Version
+
+If you see:
+
+```
+Node v18.0.0 is not compatible with oxlint (requires ^20.19.0 || >=22.12.0).
+Lint checks will be skipped.
+```
+
+You have three options:
+
+#### Option 1: Upgrade Node.js
+
+```bash
+# Using nvm
+nvm install 24
+nvm use 24
+
+# Using n
+n latest
+
+# Using official installer
+# Download from https://nodejs.org
+```
+
+#### Option 2: Install via nvm (Recommended)
+
+React Doctor can install a compatible Node.js version automatically:
+
+```bash
+npx react-doctor .
+# Prompts: "Install Node 24 via nvm to enable lint checks?"
+```
+
+Or manually:
+
+```bash
+nvm install 24
+npx react-doctor .
+```
+
+<Info>
+  React Doctor will use Node 24 from nvm for lint checks while keeping your system Node.js version unchanged.
+</Info>
+
+#### Option 3: Use npx with Matching Node
+
+```bash
+npx -p oxlint@latest react-doctor@latest .
+```
+
+This bundles oxlint with native bindings for your Node version.
+
+### nvm Not Installed
+
+If you don't have nvm:
+
+```bash
+# macOS/Linux
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+
+# Restart terminal, then:
+nvm install 24
+```
+
+Windows users: Use [nvm-windows](https://github.com/coreybutler/nvm-windows)
+
+### Native Binding Error
+
+If you see:
+
+```
+Lint checks failed — oxlint native binding not found (Node v18.0.0).
+```
+
+This means oxlint can't find prebuilt binaries for your Node version.
+
+**Solution:**
+
+```bash
+npx -p oxlint@latest react-doctor@latest .
+```
+
+Or upgrade Node.js to v24 (recommended).
+
+<Warning>
+  React Doctor will skip lint checks if Node.js is incompatible. You'll only get dead code detection results.
+</Warning>
+
+## Performance Issues
+
+React Doctor can be slow on large codebases.
+
+### Scan Takes Too Long
+
+#### Use Diff Mode
+
+Scan only changed files:
+
+```bash
+npx react-doctor . --diff
+```
+
+This is **10-100× faster** than full scans.
+
+#### Select Specific Project
+
+In monorepos, scan one project:
+
+```bash
+npx react-doctor . --project web
+```
+
+#### Disable Dead Code Detection
+
+Dead code analysis is slow on large projects:
+
+```bash
+npx react-doctor . --no-dead-code
+```
+
+Or in config:
+
+```json react-doctor.config.json
+{
+  "deadCode": false
+}
+```
+
+#### Ignore Generated Files
+
+Exclude large generated directories:
+
+```json react-doctor.config.json
+{
+  "ignore": {
+    "files": [
+      "**/dist/**",
+      "**/build/**",
+      "**/.next/**",
+      "**/node_modules/**",
+      "**/*.generated.ts"
+    ]
+  }
+}
+```
+
+<Tip>
+  Combine strategies for maximum speed: `npx react-doctor . --project web --diff --no-dead-code`
+</Tip>
+
+### Knip Hangs or Times Out
+
+Dead code detection (via Knip) can stall on complex projects.
+
+**Solution 1:** Increase timeout in Knip config
+
+Create `knip.json`:
+
+```json knip.json
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignore": ["dist/**", "build/**"]
+}
+```
+
+**Solution 2:** Disable dead code detection
+
+```bash
+npx react-doctor . --no-dead-code
+```
+
+**Solution 3:** Use diff mode (skips dead code automatically)
+
+```bash
+npx react-doctor . --diff
+```
+
+## Installation Issues
+
+### npx Command Not Found
+
+`npx` comes with npm. Ensure Node.js is installed:
+
+```bash
+node --version
+npm --version
+```
+
+If not installed, download from [nodejs.org](https://nodejs.org).
+
+### Permission Denied
+
+On macOS/Linux:
+
+```bash
+sudo npx -y react-doctor@latest .
+```
+
+Or fix npm permissions: [docs.npmjs.com/resolving-eacces-permissions-errors](https://docs.npmjs.com/resolving-eacces-permissions-errors-when-installing-packages-globally)
+
+### Slow Installation
+
+React Doctor downloads dependencies on first run. Use `-y` to auto-accept:
+
+```bash
+npx -y react-doctor@latest .
+```
+
+## Score Calculation Issues
+
+### Score Not Calculated
+
+If you see:
+
+```
+You are offline, could not calculate score. Reconnect to calculate.
+```
+
+**Causes:**
+
+1. **No internet connection** - React Doctor requires API access to calculate scores
+2. **Firewall blocking** - Corporate firewalls may block `react.doctor` API
+3. **Using --offline flag** - You explicitly disabled telemetry
+
+**Solutions:**
+
+- Connect to the internet
+- Check firewall settings
+- Remove `--offline` flag
+
+<Info>
+  React Doctor sends diagnostics (anonymized) to calculate accurate scores. No source code is transmitted.
+</Info>
+
+### Score Seems Wrong
+
+Scores are based on unique rule violations, not total occurrences.
+
+**Example:**
+
+- 100 diagnostics from 5 unique rules = Score ~92
+- 10 diagnostics from 10 unique rules = Score ~85
+
+See [Understanding Scores](/guides/understanding-scores) for details.
+
+### Score Doesn't Improve After Fixes
+
+If the score stays the same after fixes:
+
+1. **Verify fixes applied** - Run with `--verbose` to see remaining issues
+2. **Check suppressed rules** - Suppressed rules still count toward total
+3. **New issues introduced** - Fixes may have created new violations
+
+Re-run with verbose output:
+
+```bash
+npx react-doctor . --verbose
+```
+
+## Configuration Issues
+
+### Config Not Loaded
+
+React Doctor looks for:
+
+1. `react-doctor.config.json` in project root
+2. `reactDoctor` key in `package.json`
+
+Verify config location:
+
+```bash
+# Should be at project root
+ls react-doctor.config.json
+```
+
+Test config:
+
+```bash
+npx react-doctor .
+# Should output: "Loaded react-doctor config."
+```
+
+### Invalid Config Format
+
+Config must be valid JSON:
+
+```json react-doctor.config.json
+{
+  "ignore": {
+    "rules": ["react/no-danger"],
+    "files": ["src/generated/**"]
+  }
+}
+```
+
+Validate JSON syntax: [jsonlint.com](https://jsonlint.com)
+
+### Rules Still Appearing After Suppression
+
+Ensure rule names match exactly:
+
+```json
+{
+  "ignore": {
+    "rules": [
+      "react/no-danger",     // ✓ Correct
+      "react-hooks/rules-of-hooks",  // ✓ Correct
+      "knip/exports"         // ✓ Correct
+    ]
+  }
+}
+```
+
+Run with `--verbose` to see exact rule names:
+
+```bash
+npx react-doctor . --verbose
+# Shows: plugin/rule format (e.g., react/no-danger)
+```
+
+## Git and Diff Mode Issues
+
+### "Not a git repository"
+
+Diff mode requires Git:
+
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+```
+
+### No Changed Files Detected
+
+If React Doctor says no changes:
+
+1. **Commit your changes** - Git only detects committed changes
+2. **Specify base branch** - `npx react-doctor . --diff main`
+3. **Check file types** - Only `.ts`, `.tsx`, `.js`, `.jsx` are scanned
+
+List changed files:
+
+```bash
+git diff --name-only main...HEAD
+```
+
+### Base Branch Not Found
+
+React Doctor looks for `main` then `master`. If neither exists:
+
+```bash
+npx react-doctor . --diff develop
+```
+
+Or create the base branch:
+
+```bash
+git checkout -b main
+```
+
+## CI/CD Issues
+
+### GitHub Actions: fetch-depth Error
+
+Diff mode needs Git history:
+
+```yaml
+- uses: actions/checkout@v5
+  with:
+    fetch-depth: 0  # Required!
+```
+
+### CI Hangs or Times Out
+
+Large codebases can exceed CI time limits:
+
+**Solution 1:** Use diff mode
+
+```yaml
+- uses: millionco/react-doctor@main
+  with:
+    diff: main
+```
+
+**Solution 2:** Disable dead code detection
+
+```yaml
+- uses: millionco/react-doctor@main
+  with:
+    dead-code: false
+```
+
+**Solution 3:** Increase timeout
+
+```yaml
+jobs:
+  scan:
+    timeout-minutes: 30
+```
+
+### CI Fails with Exit Code 1
+
+If you're using `--fail-on` flag:
+
+```bash
+npx react-doctor . --fail-on error
+```
+
+React Doctor exits with code 1 when errors are found. This is expected behavior.
+
+To ignore in CI:
+
+```yaml
+- run: npx react-doctor . || true
+```
+
+Or remove `--fail-on` flag.
+
+## Monorepo Issues
+
+### Workspaces Not Detected
+
+React Doctor requires workspace config:
+
+**npm/Yarn/pnpm:**
+
+```json package.json
+{
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ]
+}
+```
+
+**pnpm:**
+
+```yaml pnpm-workspace.yaml
+packages:
+  - 'packages/*'
+  - 'apps/*'
+```
+
+Verify workspaces:
+
+```bash
+npm list --depth=0
+# or
+pnpm list -r --depth=0
+```
+
+### Project Not Found
+
+If `--project` fails:
+
+```bash
+# List projects interactively
+npx react-doctor .
+```
+
+Use the exact name shown in the prompt.
+
+### Scanning Takes Too Long in Monorepo
+
+Scan specific projects:
+
+```bash
+npx react-doctor . --project web --diff
+```
+
+See [Monorepo Projects](/guides/monorepo-projects) for optimization tips.
+
+## Output and Display Issues
+
+### Colors Not Showing
+
+Terminals without color support:
+
+```bash
+export FORCE_COLOR=1
+npx react-doctor .
+```
+
+Or disable colors:
+
+```bash
+export NO_COLOR=1
+npx react-doctor .
+```
+
+### Verbose Output Truncated
+
+Full diagnostics are written to temp directory:
+
+```bash
+npx react-doctor .
+# Outputs: Full diagnostics written to /tmp/react-doctor-xxx
+```
+
+Read specific rules:
+
+```bash
+cat /tmp/react-doctor-xxx/react--no-danger.txt
+```
+
+### JSON Output
+
+For programmatic use:
+
+```typescript
+import { diagnose } from "react-doctor/api";
+
+const result = await diagnose(".");
+console.log(JSON.stringify(result, null, 2));
+```
+
+## Coding Agent Integration Issues
+
+### Skill Not Recognized
+
+Re-install the skill:
+
+```bash
+curl -fsSL https://react.doctor/install-skill.sh | bash
+```
+
+Verify installation:
+
+```bash
+ls ~/.opencode/skills/react-doctor
+ls ~/.cursor/skills/react-doctor
+```
+
+### Agent Doesn't Run Automatically
+
+Coding agents run React Doctor when:
+
+1. You explicitly ask ("run react-doctor")
+2. After completing React changes (if skill is installed)
+
+Manually trigger:
+
+```bash
+npx react-doctor . --verbose --diff
+```
+
+See [Using with Coding Agents](/guides/coding-agents) for details.
+
+## Getting Help
+
+If you're still stuck:
+
+### Check GitHub Issues
+
+Search existing issues: [github.com/millionco/react-doctor/issues](https://github.com/millionco/react-doctor/issues)
+
+### Enable Verbose Mode
+
+```bash
+npx react-doctor . --verbose
+```
+
+Provides detailed diagnostics.
+
+### Run with Debug Info
+
+```bash
+DEBUG=* npx react-doctor .
+```
+
+Shows internal logs.
+
+### Open an Issue
+
+Report bugs: [github.com/millionco/react-doctor/issues/new](https://github.com/millionco/react-doctor/issues/new)
+
+Include:
+
+- React Doctor version (`npx react-doctor --version`)
+- Node.js version (`node --version`)
+- Operating system
+- Full error message
+- Command you ran
+
+<Info>
+  Most issues are Node.js version mismatches or Git configuration problems. Check those first!
+</Info>

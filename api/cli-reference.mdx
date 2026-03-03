@@ -1,0 +1,203 @@
+---
+title: CLI Reference
+description: Complete command-line interface reference for React Doctor
+---
+
+## Command Syntax
+
+```bash
+npx react-doctor@latest [directory] [options]
+```
+
+## Arguments
+
+<ParamField path="directory" type="string" default=".">
+  Project directory to scan. Defaults to the current directory.
+</ParamField>
+
+## Options
+
+### Scan Configuration
+
+<ParamField path="--lint" type="boolean" default="true">
+  Enable linting checks. Can be overridden in config file.
+</ParamField>
+
+<ParamField path="--no-lint" type="boolean">
+  Skip linting checks.
+</ParamField>
+
+<ParamField path="--dead-code" type="boolean" default="true">
+  Enable dead code detection using Knip.
+</ParamField>
+
+<ParamField path="--no-dead-code" type="boolean">
+  Skip dead code detection.
+</ParamField>
+
+<ParamField path="--verbose" type="boolean" default="false">
+  Show file details per rule in the output.
+</ParamField>
+
+### Output Options
+
+<ParamField path="--score" type="boolean" default="false">
+  Output only the score without diagnostic details.
+</ParamField>
+
+<ParamField path="--offline" type="boolean" default="false">
+  Skip telemetry (anonymous, not stored, only used to calculate score).
+</ParamField>
+
+### Project Selection
+
+<ParamField path="--project" type="string">
+  Select workspace project(s). Use comma-separated values for multiple projects.
+  
+  ```bash
+  npx react-doctor --project=app,web
+  ```
+</ParamField>
+
+<ParamField path="-y, --yes" type="boolean" default="false">
+  Skip prompts and scan all workspace projects automatically.
+</ParamField>
+
+### Differential Scanning
+
+<ParamField path="--diff" type="boolean | string">
+  Scan only files changed vs base branch. If a branch name is provided, uses that as the base branch.
+  
+  ```bash
+  # Compare against default base branch
+  npx react-doctor --diff
+  
+  # Compare against specific branch
+  npx react-doctor --diff=main
+  ```
+</ParamField>
+
+### Error Handling
+
+<ParamField path="--fail-on" type="'error' | 'warning' | 'none'" default="none">
+  Exit with non-zero code based on diagnostic severity:
+  - `error`: Exit with code 1 if any errors are found
+  - `warning`: Exit with code 1 if any warnings or errors are found
+  - `none`: Always exit with code 0
+</ParamField>
+
+### Auto-fix
+
+<ParamField path="--fix" type="boolean" default="false">
+  Open Ami to automatically fix all issues.
+</ParamField>
+
+<ParamField path="--no-ami" type="boolean">
+  Skip Ami-related prompts.
+</ParamField>
+
+### Information
+
+<ParamField path="-v, --version" type="boolean">
+  Display the version number.
+</ParamField>
+
+<ParamField path="-h, --help" type="boolean">
+  Display help information.
+</ParamField>
+
+## Subcommands
+
+### fix
+
+Open Ami to auto-fix react-doctor issues.
+
+```bash
+npx react-doctor fix [directory]
+```
+
+<ParamField path="directory" type="string" default=".">
+  Project directory. Defaults to current directory.
+</ParamField>
+
+### install-ami
+
+Install Ami and open it to auto-fix issues.
+
+```bash
+npx react-doctor install-ami [directory]
+```
+
+<ParamField path="directory" type="string" default=".">
+  Project directory. Defaults to current directory.
+</ParamField>
+
+## Exit Codes
+
+<ResponseField name="0" type="Success">
+  Scan completed successfully (or no failures based on `--fail-on` setting).
+</ResponseField>
+
+<ResponseField name="1" type="Failure">
+  Diagnostic issues found that match the `--fail-on` severity level.
+</ResponseField>
+
+## Environment Variables
+
+React Doctor detects automated environments and adjusts behavior accordingly. The following environment variables indicate an automated environment:
+
+- `CI` - Continuous Integration environment
+- `CLAUDECODE` - Claude Code environment
+- `CURSOR_AGENT` - Cursor Agent environment
+- `CODEX_CI` - Codex CI environment
+- `OPENCODE` - OpenCode environment
+- `AMP_HOME` - Amp environment
+- `AMI` - Ami environment
+
+When an automated environment is detected:
+- Prompts are automatically skipped (equivalent to `--yes`)
+- TTY checks are bypassed
+
+## Examples
+
+### Basic scan
+
+```bash
+npx react-doctor@latest
+```
+
+### Scan specific directory with verbose output
+
+```bash
+npx react-doctor ./packages/app --verbose
+```
+
+### Scan only changed files
+
+```bash
+npx react-doctor --diff
+```
+
+### Run in CI with fail on errors
+
+```bash
+npx react-doctor --fail-on=error --yes --no-ami
+```
+
+### Skip dead code analysis
+
+```bash
+npx react-doctor --no-dead-code
+```
+
+### Scan multiple workspace projects
+
+```bash
+npx react-doctor --project=app,web --verbose
+```
+
+### Open Ami to fix issues
+
+```bash
+npx react-doctor --fix
+```

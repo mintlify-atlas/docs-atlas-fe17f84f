@@ -1,0 +1,386 @@
+---
+title: Pre-Commit Hooks
+description: Run React Doctor automatically before commits and pushes
+---
+
+## Husky Setup
+
+<Steps>
+  <Step title="Install Husky">
+    <CodeGroup>
+    ```bash npm
+    npm install --save-dev husky
+    npx husky init
+    ```
+
+    ```bash yarn
+    yarn add --dev husky
+    npx husky init
+    ```
+
+    ```bash pnpm
+    pnpm add --save-dev husky
+    pnpm exec husky init
+    ```
+
+    ```bash bun
+    bun add --dev husky
+    bunx husky init
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Add pre-commit hook">
+    Create `.husky/pre-commit`:
+
+    ```bash .husky/pre-commit
+    #!/bin/sh
+    . "$(dirname "$0")/_/husky.sh"
+
+    # Run React Doctor on changed files only
+    npx -y react-doctor@latest . --diff HEAD --fail-on error
+    ```
+
+    Make it executable:
+
+    ```bash
+    chmod +x .husky/pre-commit
+    ```
+  </Step>
+
+  <Step title="Test the hook">
+    Make a change and commit:
+
+    ```bash
+    git add .
+    git commit -m "test: verify pre-commit hook"
+    ```
+
+    React Doctor will run automatically before the commit completes.
+  </Step>
+</Steps>
+
+## Pre-Push Hook
+
+For longer-running scans, use a pre-push hook instead:
+
+<Steps>
+  <Step title="Create pre-push hook">
+    Create `.husky/pre-push`:
+
+    ```bash .husky/pre-push
+    #!/bin/sh
+    . "$(dirname "$0")/_/husky.sh"
+
+    # Full scan before push
+    npx -y react-doctor@latest . --verbose --fail-on error
+    ```
+
+    Make it executable:
+
+    ```bash
+    chmod +x .husky/pre-push
+    ```
+  </Step>
+
+  <Step title="Test the hook">
+    ```bash
+    git push
+    ```
+
+    React Doctor will run before the push completes.
+  </Step>
+</Steps>
+
+## Lint-Staged Integration
+
+Run React Doctor only on staged files for faster commits:
+
+<Steps>
+  <Step title="Install lint-staged">
+    <CodeGroup>
+    ```bash npm
+    npm install --save-dev lint-staged
+    ```
+
+    ```bash yarn
+    yarn add --dev lint-staged
+    ```
+
+    ```bash pnpm
+    pnpm add --save-dev lint-staged
+    ```
+
+    ```bash bun
+    bun add --dev lint-staged
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Configure lint-staged">
+    Add to `package.json`:
+
+    ```json package.json
+    {
+      "lint-staged": {
+        "*.{ts,tsx,js,jsx}": [
+          "npx -y react-doctor@latest . --diff HEAD --fail-on error"
+        ]
+      }
+    }
+    ```
+
+    Or create `.lintstagedrc.json`:
+
+    ```json .lintstagedrc.json
+    {
+      "*.{ts,tsx,js,jsx}": [
+        "npx -y react-doctor@latest . --diff HEAD --fail-on error"
+      ]
+    }
+    ```
+  </Step>
+
+  <Step title="Update pre-commit hook">
+    Modify `.husky/pre-commit`:
+
+    ```bash .husky/pre-commit
+    #!/bin/sh
+    . "$(dirname "$0")/_/husky.sh"
+
+    npx lint-staged
+    ```
+  </Step>
+</Steps>
+
+## Monorepo Hooks
+
+### Detect Changed Project
+
+Run React Doctor only on the affected workspace project:
+
+```bash .husky/pre-commit
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Get changed files
+CHANGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR)
+
+# Determine which project changed
+if echo "$CHANGED_FILES" | grep -q "^apps/web/"; then
+  npx -y react-doctor@latest . --project web --diff HEAD --fail-on error
+elif echo "$CHANGED_FILES" | grep -q "^apps/admin/"; then
+  npx -y react-doctor@latest . --project admin --diff HEAD --fail-on error
+fi
+```
+
+### Scan All Projects
+
+```bash .husky/pre-push
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Scan all workspace projects
+npx -y react-doctor@latest . --yes --fail-on error
+```
+
+## Conditional Hooks
+
+### Skip on WIP Commits
+
+Allow WIP commits to skip the hook:
+
+```bash .husky/pre-commit
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Skip hook if commit message starts with "WIP"
+COMMIT_MSG_FILE=$1
+if [ -n "$COMMIT_MSG_FILE" ]; then
+  COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+  if echo "$COMMIT_MSG" | grep -q "^WIP"; then
+    echo "Skipping React Doctor for WIP commit"
+    exit 0
+  fi
+fi
+
+npx -y react-doctor@latest . --diff HEAD --fail-on error
+```
+
+### Skip with Environment Variable
+
+Bypass the hook when needed:
+
+```bash .husky/pre-commit
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+if [ "$SKIP_DOCTOR" = "1" ]; then
+  echo "Skipping React Doctor (SKIP_DOCTOR=1)"
+  exit 0
+fi
+
+npx -y react-doctor@latest . --diff HEAD --fail-on error
+```
+
+Usage:
+
+```bash
+SKIP_DOCTOR=1 git commit -m "emergency fix"
+```
+
+## Performance Optimization
+
+### Cache npx Downloads
+
+Speed up hook execution by caching React Doctor:
+
+```bash .husky/pre-commit
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Use cached version with faster startup
+npx react-doctor@latest . --diff HEAD --fail-on error
+```
+
+### Skip Linting for Speed
+
+Run only dead code detection:
+
+```bash .husky/pre-commit
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+npx -y react-doctor@latest . --no-lint --diff HEAD --fail-on error
+```
+
+### Quick Score Check
+
+Just verify the score hasn't dropped:
+
+```bash .husky/pre-commit
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+SCORE=$(npx -y react-doctor@latest . --score --diff HEAD)
+MIN_SCORE=70
+
+if [ "$SCORE" -lt "$MIN_SCORE" ]; then
+  echo "Error: Health score $SCORE is below minimum $MIN_SCORE"
+  exit 1
+fi
+
+echo "Health score: $SCORE"
+```
+
+## Git Bypass
+
+Users can always bypass hooks if needed:
+
+```bash
+# Skip all hooks
+git commit --no-verify -m "urgent fix"
+
+# Skip pre-push hook
+git push --no-verify
+```
+
+<Warning>
+  Git hooks run locally and can be bypassed. For enforced checks, use CI/CD pipelines.
+</Warning>
+
+## Complete Workflow Example
+
+Here's a complete setup with both pre-commit and pre-push hooks:
+
+<Steps>
+  <Step title="Install dependencies">
+    ```bash
+    npm install --save-dev husky lint-staged
+    npx husky init
+    ```
+  </Step>
+
+  <Step title="Configure lint-staged">
+    ```json package.json
+    {
+      "lint-staged": {
+        "*.{ts,tsx,js,jsx}": [
+          "npx -y react-doctor@latest . --diff HEAD --fail-on error"
+        ]
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Create pre-commit hook">
+    ```bash .husky/pre-commit
+    #!/bin/sh
+    . "$(dirname "$0")/_/husky.sh"
+
+    # Fast check on staged files
+    npx lint-staged
+    ```
+
+    ```bash
+    chmod +x .husky/pre-commit
+    ```
+  </Step>
+
+  <Step title="Create pre-push hook">
+    ```bash .husky/pre-push
+    #!/bin/sh
+    . "$(dirname "$0")/_/husky.sh"
+
+    # Full scan before push to remote
+    npx -y react-doctor@latest . --verbose --fail-on warning
+    ```
+
+    ```bash
+    chmod +x .husky/pre-push
+    ```
+  </Step>
+
+  <Step title="Test the setup">
+    ```bash
+    # Make a change
+    echo "export const test = 1;" > test.ts
+    git add test.ts
+
+    # Pre-commit hook runs
+    git commit -m "test: add test file"
+
+    # Pre-push hook runs
+    git push
+    ```
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### Hook Not Running
+
+Ensure the hook is executable:
+
+```bash
+chmod +x .husky/pre-commit
+chmod +x .husky/pre-push
+```
+
+### npx Takes Too Long
+
+Cache React Doctor globally:
+
+```bash
+npm install -g react-doctor@latest
+```
+
+Then use in hooks:
+
+```bash
+react-doctor . --diff HEAD --fail-on error
+```
+
+### Hook Fails in CI
+
+Git hooks only run locally. For CI, use [CI/CD Integration](/examples/ci-cd-integration).

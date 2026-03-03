@@ -1,0 +1,392 @@
+---
+title: GitHub Actions
+description: Integrate React Doctor into your CI/CD pipeline with GitHub Actions
+---
+
+## Quick Start
+
+Add React Doctor to your GitHub Actions workflow:
+
+```yaml .github/workflows/react-doctor.yml
+name: React Doctor
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: millionco/react-doctor@latest
+```
+
+## Action Inputs
+
+<ParamField path="directory" type="string" default=".">
+  Project directory to scan
+</ParamField>
+
+<ParamField path="verbose" type="boolean" default="true">
+  Show file details per rule. Enabled by default in GitHub Actions for better visibility.
+</ParamField>
+
+<ParamField path="project" type="string">
+  Workspace project(s) to scan. Comma-separated for multiple projects.
+</ParamField>
+
+<ParamField path="diff" type="string">
+  Base branch for diff mode (e.g., `main`). Only files changed vs this branch are scanned.
+</ParamField>
+
+<ParamField path="github-token" type="string">
+  GitHub token for posting PR comments. When set on `pull_request` events, findings are posted as a PR comment.
+</ParamField>
+
+<ParamField path="fail-on" type="string" default="error">
+  Exit with error code on diagnostics: `error`, `warning`, `none`
+</ParamField>
+
+<ParamField path="node-version" type="string" default="20">
+  Node.js version to use for the scan
+</ParamField>
+
+## Action Outputs
+
+<ParamField path="score" type="number">
+  Health score (0-100). Available even if the scan fails.
+</ParamField>
+
+**Example using output:**
+```yaml
+- uses: millionco/react-doctor@latest
+  id: doctor
+
+- name: Check score
+  run: |
+    echo "Health score: ${{ steps.doctor.outputs.score }}"
+```
+
+## Common Workflows
+
+### Basic CI Check
+
+Fail the build if errors are detected:
+
+```yaml .github/workflows/ci.yml
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: millionco/react-doctor@latest
+        with:
+          fail-on: error
+```
+
+### PR Comments
+
+Automatically post findings as PR comments:
+
+```yaml .github/workflows/pr-check.yml
+name: PR Check
+
+on:
+  pull_request:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: millionco/react-doctor@latest
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on: error
+```
+
+<Note>
+The action automatically updates existing comments rather than creating new ones on each run.
+</Note>
+
+### Diff Mode for PRs
+
+Scan only changed files in pull requests:
+
+```yaml .github/workflows/pr-diff.yml
+name: PR Diff Check
+
+on:
+  pull_request:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required for diff mode
+      
+      - uses: millionco/react-doctor@latest
+        with:
+          diff: main
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          verbose: true
+```
+
+### Monorepo Support
+
+Scan specific workspace projects:
+
+```yaml .github/workflows/monorepo.yml
+name: Monorepo Check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  scan-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: millionco/react-doctor@latest
+        with:
+          project: web,mobile
+          fail-on: error
+```
+
+### Score Tracking
+
+Track health scores over time:
+
+```yaml .github/workflows/score.yml
+name: Health Score
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  track-score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: millionco/react-doctor@latest
+        id: doctor
+        with:
+          fail-on: none
+      
+      - name: Log score
+        run: |
+          echo "Current health score: ${{ steps.doctor.outputs.score }}"
+          
+      - name: Comment on commit
+        uses: peter-evans/commit-comment@v3
+        with:
+          body: |
+            ## React Doctor Score: ${{ steps.doctor.outputs.score }}/100
+```
+
+### Multiple Node Versions
+
+Test with different Node.js versions:
+
+```yaml .github/workflows/matrix.yml
+name: Matrix Test
+
+on:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: millionco/react-doctor@latest
+        with:
+          node-version: ${{ matrix.node-version }}
+          fail-on: error
+```
+
+## Advanced Configuration
+
+### Conditional Execution
+
+Run only on specific file changes:
+
+```yaml .github/workflows/conditional.yml
+name: Conditional Check
+
+on:
+  pull_request:
+    paths:
+      - 'src/**/*.tsx'
+      - 'src/**/*.ts'
+      - 'package.json'
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: millionco/react-doctor@latest
+        with:
+          fail-on: error
+```
+
+### Custom Directory
+
+Scan a specific subdirectory:
+
+```yaml .github/workflows/subdirectory.yml
+name: Subdirectory Scan
+
+on:
+  pull_request:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: millionco/react-doctor@latest
+        with:
+          directory: ./packages/web
+          fail-on: error
+```
+
+### Combine with Other Actions
+
+Integrate with testing and linting:
+
+```yaml .github/workflows/full-ci.yml
+name: Full CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: npm test
+      
+      - name: Run React Doctor
+        uses: millionco/react-doctor@latest
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on: error
+      
+      - name: Build
+        run: npm run build
+```
+
+## PR Comment Format
+
+When using `github-token` on pull requests, React Doctor posts a comment with this format:
+
+```markdown
+## 🩺 React Doctor
+
+```
+  ✗ useEffect dependencies array is missing dependencies (2)
+    Ensure all dependencies are included in the array
+    src/components/Header.tsx: 45, 67
+
+  ⚠ Avoid using array index as key (1)
+    Use a unique identifier instead
+    src/pages/List.tsx: 89
+
+  ┌──────────────────────────────────────────┐
+  │ ┌─────┐                                  │
+  │ │ • • │                                  │
+  │ │  ─  │                                  │
+  │ └─────┘                                  │
+  │ React Doctor (www.react.doctor)          │
+  │                                          │
+  │ 78 / 100  Needs Improvement              │
+  │                                          │
+  │ ███████████████████████████░░░░░░░░░░    │
+  │                                          │
+  │ ✗ 5 errors  ⚠ 12 warnings  across 8/142  │
+  │ files  in 2.3s                           │
+  └──────────────────────────────────────────┘
+```
+```
+
+The comment is automatically updated on subsequent runs rather than creating duplicates.
+
+## Troubleshooting
+
+### Action Fails with "No React dependency found"
+
+Ensure React is listed in your `package.json`:
+
+```json
+{
+  "dependencies": {
+    "react": "^18.0.0"
+  }
+}
+```
+
+### Diff mode not detecting changes
+
+Use `fetch-depth: 0` to fetch full git history:
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0
+```
+
+### PR comments not appearing
+
+Ensure the workflow has write permissions:
+
+```yaml
+permissions:
+  pull-requests: write
+  contents: read
+```
+
+## Best Practices
+
+1. **Use diff mode for PRs**: Scan only changed files to reduce CI time
+2. **Enable PR comments**: Provide immediate feedback to developers
+3. **Set fail-on appropriately**: Use `error` for CI, `none` for reporting
+4. **Track scores**: Monitor codebase health over time
+5. **Combine with existing checks**: Integrate into existing CI workflows

@@ -1,0 +1,136 @@
+---
+title: 'React Doctor'
+description: 'Let coding agents diagnose and fix your React code. Get a 0-100 health score in seconds.'
+---
+
+<img
+  className="block dark:hidden"
+  src="/images/hero-light.svg"
+  alt="React Doctor Hero Light"
+/>
+<img
+  className="hidden dark:block"
+  src="/images/hero-dark.svg"
+  alt="React Doctor Hero Dark"
+/>
+
+## Welcome to React Doctor
+
+React Doctor is a CLI tool that scans your React codebase for security, performance, correctness, and architecture issues. One command gives you a **0-100 score** with actionable diagnostics.
+
+<CodeGroup>
+```bash Terminal
+npx -y react-doctor@latest .
+```
+
+```bash Output
+react-doctor v0.0.29
+
+Detected: Next.js 15.1.0, React 19.0.0
+Running lint checks...
+Running dead code detection...
+
+✓ Scan complete
+
+Score: 84 (Great)
+
+📊 Results:
+  2 errors, 196 warnings
+  80 unused files detected
+
+Run with --verbose to see file details
+```
+</CodeGroup>
+
+## How It Works
+
+React Doctor automatically detects your framework (Next.js, Vite, Remix, etc.), React version, and compiler setup, then runs **two analysis passes in parallel**:
+
+<CardGroup cols={2}>
+  <Card title="Lint Analysis" icon="magnifying-glass">
+    Checks 60+ rules across state & effects, performance, architecture, bundle size, security, correctness, accessibility, and framework-specific categories (Next.js, React Native)
+  </Card>
+  <Card title="Dead Code Detection" icon="trash">
+    Detects unused files, exports, types, and duplicates throughout your codebase
+  </Card>
+</CardGroup>
+
+Diagnostics are filtered through your config, then scored by severity (errors weigh more than warnings) to produce a **0-100 health score**:
+
+- **75+ Great** - Your codebase is in excellent shape
+- **50-74 Needs work** - Some issues to address
+- **&lt;50 Critical** - Significant problems detected
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Zero Configuration" icon="bolt">
+    No installation needed. Run with `npx` and get results immediately. Auto-detects your framework and React version.
+  </Card>
+  <Card title="Framework Aware" icon="react">
+    Built-in support for Next.js, Vite, Remix, React Native, and more. Rules are toggled automatically based on your setup.
+  </Card>
+  <Card title="Diff Mode" icon="code-branch">
+    Scan only changed files with `--diff` to speed up CI/CD pipelines and focus on what matters.
+  </Card>
+  <Card title="GitHub Actions" icon="github">
+    First-class CI/CD integration with automatic PR comments and score outputs.
+  </Card>
+  <Card title="AI Agent Ready" icon="robot">
+    Install React Doctor as a skill for Cursor, Claude Code, OpenCode, Windsurf, and other coding agents.
+  </Card>
+  <Card title="Auto-Fix with Ami" icon="wand-magic-sparkles">
+    Use Ami coding agent to automatically fix issues and improve your score.
+  </Card>
+</CardGroup>
+
+## Quick Links
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Get started with React Doctor in seconds
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Run your first scan and understand the output
+  </Card>
+  <Card title="GitHub Actions" icon="github" href="/usage/github-actions">
+    Set up React Doctor in your CI/CD pipeline
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/diagnose">
+    Use React Doctor programmatically in Node.js
+  </Card>
+</CardGroup>
+
+## Real-World Results
+
+React Doctor has analyzed popular open-source projects:
+
+| Project | Score | Details |
+|---------|-------|----------|
+| [tldraw](https://github.com/tldraw/tldraw) | **84** | 98 errors, 139 warnings, 40 unused files |
+| [excalidraw](https://github.com/excalidraw/excalidraw) | **84** | 2 errors, 196 warnings, 80 unused files |
+| [twenty](https://github.com/twentyhq/twenty) | **78** | 99 errors, 293 warnings, 268 unused files |
+| [plane](https://github.com/makeplane/plane) | **78** | 7 errors, 525 warnings, 292 unused files |
+
+[View full leaderboard →](https://react.doctor/leaderboard)
+
+## What's Next?
+
+<Steps>
+  <Step title="Install React Doctor">
+    Learn how to run React Doctor with npx or install it globally
+  </Step>
+  <Step title="Run Your First Scan">
+    Scan your codebase and understand the output
+  </Step>
+  <Step title="Configure for Your Project">
+    Customize rules and ignore patterns for your specific needs
+  </Step>
+  <Step title="Set Up CI/CD">
+    Integrate React Doctor into your GitHub Actions workflow
+  </Step>
+</Steps>
+
+<Card title="Need Help?" icon="question" href="https://github.com/millionco/react-doctor/issues">
+  Open an issue on GitHub or check existing discussions
+</Card>

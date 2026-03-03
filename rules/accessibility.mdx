@@ -1,0 +1,363 @@
+---
+title: Accessibility Rules
+description: jsx-a11y rules for building accessible React interfaces
+---
+
+React Doctor includes 15 accessibility rules from the `jsx-a11y` plugin to help you build interfaces that work for everyone.
+
+## Why Accessibility Matters
+
+- **15% of the world** has some form of disability
+- **Legal requirement** in many jurisdictions (ADA, Section 508, WCAG)
+- **Better UX** for everyone (keyboard nav, screen readers, low vision)
+- **SEO benefits** from semantic HTML
+
+## Rules
+
+<Accordion title="alt-text" icon="circle-xmark">
+  **Severity:** error  
+  **Rule ID:** `jsx-a11y/alt-text`
+
+  Requires `alt` attribute on `<img>` elements. Screen readers use alt text to describe images.
+
+  **Bad:**
+  ```tsx
+  <img src="logo.png" />
+  ```
+
+  **Good:**
+  ```tsx
+  <img src="logo.png" alt="Company logo" />
+  
+  // Decorative images should have empty alt
+  <img src="divider.png" alt="" />
+  ```
+</Accordion>
+
+<Accordion title="anchor-is-valid" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `jsx-a11y/anchor-is-valid`
+
+  Ensures `<a>` elements have valid `href` attributes. Links without hrefs should be buttons.
+
+  **Bad:**
+  ```tsx
+  <a onClick={handleClick}>Click me</a>
+  <a href="#">Click me</a>
+  ```
+
+  **Good:**
+  ```tsx
+  <button onClick={handleClick}>Click me</button>
+  <a href="/page">Go to page</a>
+  ```
+</Accordion>
+
+<Accordion title="click-events-have-key-events" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `jsx-a11y/click-events-have-key-events`
+
+  Requires keyboard event handlers alongside click handlers for accessibility.
+
+  **Bad:**
+  ```tsx
+  <div onClick={handleClick}>Click me</div>
+  ```
+
+  **Good:**
+  ```tsx
+  // Use semantic button instead
+  <button onClick={handleClick}>Click me</button>
+  
+  // Or add keyboard handler
+  <div
+    onClick={handleClick}
+    onKeyDown={(e) => e.key === 'Enter' && handleClick()}
+    role="button"
+    tabIndex={0}
+  >
+    Click me
+  </div>
+  ```
+</Accordion>
+
+<Accordion title="no-static-element-interactions" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `jsx-a11y/no-static-element-interactions`
+
+  Prevents adding click/keyboard handlers to non-interactive elements without proper ARIA roles.
+
+  **Bad:**
+  ```tsx
+  <div onClick={handleClick}>Clickable</div>
+  ```
+
+  **Good:**
+  ```tsx
+  <button onClick={handleClick}>Clickable</button>
+  
+  // Or with role
+  <div role="button" tabIndex={0} onClick={handleClick}>Clickable</div>
+  ```
+</Accordion>
+
+<Accordion title="no-noninteractive-element-interactions" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `jsx-a11y/no-noninteractive-element-interactions`
+
+  Prevents adding interactions to non-interactive elements like `<li>`, `<article>`, etc.
+
+  **Bad:**
+  ```tsx
+  <li onClick={handleClick}>Item</li>
+  ```
+
+  **Good:**
+  ```tsx
+  <li>
+    <button onClick={handleClick}>Item</button>
+  </li>
+  ```
+</Accordion>
+
+<Accordion title="role-has-required-aria-props" icon="circle-xmark">
+  **Severity:** error  
+  **Rule ID:** `jsx-a11y/role-has-required-aria-props`
+
+  Ensures ARIA roles have all required ARIA attributes.
+
+  **Bad:**
+  ```tsx
+  <div role="checkbox" />
+  ```
+
+  **Good:**
+  ```tsx
+  <div role="checkbox" aria-checked="false" />
+  ```
+</Accordion>
+
+<Accordion title="no-autofocus" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `jsx-a11y/no-autofocus`
+
+  Discourages `autoFocus` as it can be disorienting for screen reader users.
+
+  **Bad:**
+  ```tsx
+  <input autoFocus />
+  ```
+
+  **Good:**
+  ```tsx
+  // Let users focus naturally, or use programmatic focus
+  const inputRef = useRef();
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+  ```
+</Accordion>
+
+<Accordion title="heading-has-content" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `jsx-a11y/heading-has-content`
+
+  Requires heading elements to have content for screen readers.
+
+  **Bad:**
+  ```tsx
+  <h1></h1>
+  <h2 />
+  ```
+
+  **Good:**
+  ```tsx
+  <h1>Page Title</h1>
+  <h2>{dynamicTitle}</h2>
+  ```
+</Accordion>
+
+<Accordion title="html-has-lang" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `jsx-a11y/html-has-lang`
+
+  Requires `<html>` element to have `lang` attribute for screen readers.
+
+  **Bad:**
+  ```html
+  <html>
+  ```
+
+  **Good:**
+  ```html
+  <html lang="en">
+  ```
+</Accordion>
+
+<Accordion title="no-redundant-roles" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `jsx-a11y/no-redundant-roles`
+
+  Prevents specifying redundant ARIA roles that are implicit.
+
+  **Bad:**
+  ```tsx
+  <button role="button">Click</button>
+  <nav role="navigation">...</nav>
+  ```
+
+  **Good:**
+  ```tsx
+  <button>Click</button>
+  <nav>...</nav>
+  ```
+</Accordion>
+
+<Accordion title="scope" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `jsx-a11y/scope`
+
+  Ensures `scope` attribute is only used on `<th>` elements in tables.
+
+  **Bad:**
+  ```tsx
+  <td scope="col">Header</td>
+  ```
+
+  **Good:**
+  ```tsx
+  <th scope="col">Header</th>
+  ```
+</Accordion>
+
+<Accordion title="tabindex-no-positive" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `jsx-a11y/tabindex-no-positive`
+
+  Prevents positive `tabIndex` values which disrupt natural tab order.
+
+  **Bad:**
+  ```tsx
+  <div tabIndex={1}>First</div>
+  <div tabIndex={2}>Second</div>
+  ```
+
+  **Good:**
+  ```tsx
+  <div tabIndex={0}>Focusable</div>
+  <div tabIndex={-1}>Not in tab order</div>
+  ```
+</Accordion>
+
+<Accordion title="label-has-associated-control" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `jsx-a11y/label-has-associated-control`
+
+  Requires `<label>` elements to be associated with form controls.
+
+  **Bad:**
+  ```tsx
+  <label>Email</label>
+  <input type="email" />
+  ```
+
+  **Good:**
+  ```tsx
+  // htmlFor
+  <label htmlFor="email">Email</label>
+  <input id="email" type="email" />
+  
+  // Nested
+  <label>
+    Email
+    <input type="email" />
+  </label>
+  ```
+</Accordion>
+
+<Accordion title="no-distracting-elements" icon="circle-xmark">
+  **Severity:** error  
+  **Rule ID:** `jsx-a11y/no-distracting-elements`
+
+  Prevents using distracting elements like `<marquee>` and `<blink>`.
+
+  **Bad:**
+  ```tsx
+  <marquee>Scrolling text</marquee>
+  <blink>Blinking text</blink>
+  ```
+
+  **Good:**
+  ```tsx
+  <div className="animate-slide">Scrolling text</div>
+  ```
+</Accordion>
+
+<Accordion title="iframe-has-title" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `jsx-a11y/iframe-has-title`
+
+  Requires `<iframe>` elements to have a `title` attribute.
+
+  **Bad:**
+  ```tsx
+  <iframe src="/embed" />
+  ```
+
+  **Good:**
+  ```tsx
+  <iframe src="/embed" title="Embedded content" />
+  ```
+</Accordion>
+
+## Accessibility Best Practices
+
+### Semantic HTML
+Use the right element for the job:
+
+```tsx
+// ✅ Semantic
+<button onClick={handleClick}>Submit</button>
+<nav><a href="/">Home</a></nav>
+<main><article>Content</article></main>
+
+// ❌ Non-semantic
+<div onClick={handleClick}>Submit</div>
+<div><div onClick={nav}>Home</div></div>
+<div><div>Content</div></div>
+```
+
+### Keyboard Navigation
+Ensure all interactive elements are keyboard accessible:
+
+- Use semantic HTML (`<button>`, `<a>`, `<input>`)
+- Add `tabIndex={0}` for custom interactive elements
+- Handle `Enter` and `Space` keys for custom controls
+- Provide visible focus indicators
+
+### Screen Readers
+Make content accessible to screen readers:
+
+- Use `alt` text for images
+- Label form inputs
+- Use ARIA labels when needed: `aria-label`, `aria-labelledby`
+- Provide `aria-live` regions for dynamic content
+- Use proper heading hierarchy (`h1` → `h2` → `h3`)
+
+### Color and Contrast
+- Maintain 4.5:1 contrast ratio for text
+- Don't rely on color alone to convey information
+- Test with color blindness simulators
+
+## Testing Tools
+
+- [axe DevTools](https://www.deque.com/axe/devtools/) - Browser extension
+- [WAVE](https://wave.webaim.org/) - Web accessibility evaluation tool
+- [Lighthouse](https://developers.google.com/web/tools/lighthouse) - Built into Chrome DevTools
+- [NVDA](https://www.nvaccess.org/) - Free screen reader for Windows
+- [VoiceOver](https://support.apple.com/guide/voiceover/) - Built into macOS
+
+## Related Rules
+
+- [Correctness Rules](/rules/correctness) - Common React mistakes
+- [Next.js Rules](/rules/nextjs) - Next.js-specific patterns

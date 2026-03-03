@@ -1,0 +1,183 @@
+---
+title: Basic Usage
+description: Common React Doctor usage patterns and examples
+---
+
+## Quick Start
+
+Run React Doctor at your project root:
+
+```bash
+npx -y react-doctor@latest .
+```
+
+## Verbose Output
+
+Show affected files and line numbers for each diagnostic:
+
+```bash
+npx -y react-doctor@latest . --verbose
+```
+
+## Score Only Mode
+
+Get just the health score (0-100) without diagnostics:
+
+```bash
+npx -y react-doctor@latest . --score
+```
+
+This is useful for scripting and tracking score over time:
+
+```bash
+# Save score to a file
+SCORE=$(npx -y react-doctor@latest . --score)
+echo "Current score: $SCORE"
+```
+
+## Monorepo / Workspace Projects
+
+<Steps>
+  <Step title="Scan specific project">
+    Use `--project` to scan a single workspace project:
+
+    ```bash
+    npx -y react-doctor@latest . --project web
+    ```
+  </Step>
+
+  <Step title="Scan multiple projects">
+    Comma-separate project names to scan multiple:
+
+    ```bash
+    npx -y react-doctor@latest . --project web,admin,mobile
+    ```
+  </Step>
+
+  <Step title="Scan all projects without prompts">
+    Use `-y` or `--yes` to skip the project selection prompt:
+
+    ```bash
+    npx -y react-doctor@latest . --yes
+    ```
+  </Step>
+</Steps>
+
+## Selective Analysis
+
+### Skip Linting
+
+Run only dead code detection:
+
+```bash
+npx -y react-doctor@latest . --no-lint
+```
+
+### Skip Dead Code Detection
+
+Run only linting:
+
+```bash
+npx -y react-doctor@latest . --no-dead-code
+```
+
+### Skip Both (Dry Run)
+
+Validate configuration and project detection:
+
+```bash
+npx -y react-doctor@latest . --no-lint --no-dead-code
+```
+
+## Diff Mode
+
+Scan only files that changed compared to a base branch:
+
+```bash
+npx -y react-doctor@latest . --diff main
+```
+
+Diff mode is perfect for:
+- Pull request checks
+- Incremental adoption in large codebases
+- Faster scans during development
+
+<Note>
+  When using `--diff` in CI, make sure to check out the full git history with `fetch-depth: 0`
+</Note>
+
+## Package Manager Variations
+
+<CodeGroup>
+```bash npm
+npx -y react-doctor@latest . --verbose
+```
+
+```bash yarn
+yarn dlx react-doctor@latest . --verbose
+```
+
+```bash pnpm
+pnpm dlx react-doctor@latest . --verbose
+```
+
+```bash bun
+bunx react-doctor@latest . --verbose
+```
+</CodeGroup>
+
+## Common Workflows
+
+### Development Workflow
+
+Quick check during development:
+
+```bash
+npx -y react-doctor@latest . --diff main --verbose
+```
+
+### Pre-Release Check
+
+Full scan before merging to main:
+
+```bash
+npx -y react-doctor@latest . --verbose --yes
+```
+
+### Score Tracking
+
+Track score in CI and store as artifact:
+
+```bash
+SCORE=$(npx -y react-doctor@latest . --score)
+echo "$SCORE" > react-doctor-score.txt
+echo "Health Score: $SCORE"
+```
+
+## Offline Mode
+
+Skip telemetry (anonymous scoring API calls):
+
+```bash
+npx -y react-doctor@latest . --offline
+```
+
+<Info>
+  Telemetry is anonymous and only used to calculate your health score. No code or file names are sent.
+</Info>
+
+## Version Check
+
+Display the installed version:
+
+```bash
+npx -y react-doctor@latest --version
+```
+
+## Help
+
+View all available options:
+
+```bash
+npx -y react-doctor@latest --help
+```

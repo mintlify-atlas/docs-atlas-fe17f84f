@@ -1,0 +1,214 @@
+---
+title: Bundle Size Rules
+description: Rules for reducing JavaScript bundle size through better imports and code splitting
+---
+
+These rules help you minimize your JavaScript bundle size by catching import patterns that bloat your bundle.
+
+## Rules
+
+<Accordion title="no-barrel-import" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/no-barrel-import`
+
+  Detects imports from barrel/index files. Barrel files can prevent tree-shaking and include unnecessary code in your bundle.
+
+  **Why it's bad:**
+  - Bundlers may include entire barrel file
+  - Tree-shaking often fails with barrel exports
+  - Slower build times
+
+  **Bad:**
+  ```tsx
+  import { Button } from './components/index';
+  import { utils } from '../utils/index.ts';
+  ```
+
+  **Good:**
+  ```tsx
+  import { Button } from './components/Button';
+  import { formatDate } from '../utils/formatDate';
+  ```
+
+  Detected patterns: `/index`, `/index.js`, `/index.ts`, `/index.tsx`, `/index.mjs`
+</Accordion>
+
+<Accordion title="no-full-lodash-import" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/no-full-lodash-import`
+
+  Prevents importing the entire lodash library. The full lodash library is ~70kb minified, but you typically only need a few functions.
+
+  **Bad:**
+  ```tsx
+  import _ from 'lodash';
+  import * as _ from 'lodash-es';
+  
+  _.debounce(fn, 300);
+  ```
+
+  **Good:**
+  ```tsx
+  import debounce from 'lodash/debounce';
+  // or
+  import { debounce } from 'lodash-es';
+  
+  debounce(fn, 300);
+  ```
+
+  <Note>
+  With proper tree-shaking configuration, `lodash-es` can be imported directly. But `lodash` (CommonJS) always requires per-function imports.
+  </Note>
+</Accordion>
+
+<Accordion title="no-moment" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/no-moment`
+
+  Suggests using `date-fns` or `dayjs` instead of moment.js. Moment.js is 300kb+ minified and no longer maintained.
+
+  **Bad:**
+  ```tsx
+  import moment from 'moment';
+  moment().format('YYYY-MM-DD');
+  ```
+
+  **Good:**
+  ```tsx
+  // date-fns (tree-shakeable)
+  import { format } from 'date-fns';
+  format(new Date(), 'yyyy-MM-dd');
+  
+  // dayjs (2kb, moment-compatible API)
+  import dayjs from 'dayjs';
+  dayjs().format('YYYY-MM-DD');
+  ```
+
+  **Bundle sizes:**
+  - moment.js: ~300kb
+  - date-fns: ~13kb (with tree-shaking)
+  - dayjs: ~2kb
+</Accordion>
+
+<Accordion title="prefer-dynamic-import" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/prefer-dynamic-import`
+
+  Recommends code splitting for heavy libraries using `React.lazy()` or `next/dynamic`.
+
+  **Heavy libraries detected:**
+  - @monaco-editor/react
+  - recharts
+  - @react-pdf/renderer
+  - react-quill
+  - @codemirror/view
+  - chart.js
+  - draft-js
+
+  **Bad:**
+  ```tsx
+  import { MonacoEditor } from '@monaco-editor/react';
+  ```
+
+  **Good:**
+  ```tsx
+  // React.lazy
+  const MonacoEditor = lazy(() => import('@monaco-editor/react'));
+  
+  <Suspense fallback={<Loading />}>
+    <MonacoEditor />
+  </Suspense>
+  
+  // Next.js dynamic import
+  const MonacoEditor = dynamic(
+    () => import('@monaco-editor/react'),
+    { ssr: false }
+  );
+  ```
+</Accordion>
+
+<Accordion title="use-lazy-motion" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/use-lazy-motion`
+
+  Enforces using `LazyMotion` with the `m` export instead of the full `motion` export from framer-motion. This saves ~30kb in bundle size.
+
+  **Bad:**
+  ```tsx
+  import { motion } from 'framer-motion';
+  <motion.div animate={{ opacity: 1 }} />
+  ```
+
+  **Good:**
+  ```tsx
+  import { LazyMotion, domAnimation, m } from 'framer-motion';
+  
+  <LazyMotion features={domAnimation}>
+    <m.div animate={{ opacity: 1 }} />
+  </LazyMotion>
+  ```
+
+  **Bundle savings:**
+  - Full `motion`: ~60kb
+  - `LazyMotion` + `domAnimation`: ~30kb
+  - Savings: ~30kb (50%)
+</Accordion>
+
+<Accordion title="no-undeferred-third-party" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/no-undeferred-third-party`
+
+  Requires `defer` or `async` attributes on third-party `<script>` tags. Synchronous scripts block the browser's first paint.
+
+  **Bad:**
+  ```tsx
+  <script src="https://example.com/analytics.js" />
+  ```
+
+  **Good:**
+  ```tsx
+  <script src="https://example.com/analytics.js" defer />
+  // or
+  <script src="https://example.com/analytics.js" async />
+  ```
+
+  **defer vs async:**
+  - `defer`: Script executes after HTML parsing, in order
+  - `async`: Script executes as soon as downloaded, out of order
+  - Use `defer` for scripts that depend on DOM or other scripts
+  - Use `async` for independent scripts like analytics
+</Accordion>
+
+## Bundle Analysis Tools
+
+Use these tools to analyze your bundle:
+
+```bash
+# Next.js
+npm run build -- --analyze
+
+# Webpack Bundle Analyzer
+npm install --save-dev webpack-bundle-analyzer
+
+# Vite
+npm run build -- --mode analyze
+```
+
+## Best Practices
+
+### Import Strategy
+1. **Direct imports** for tree-shakeable libraries
+2. **Dynamic imports** for heavy components
+3. **Avoid barrel files** in your own code
+4. **Per-function imports** for lodash and similar utilities
+
+### Code Splitting
+- Split routes/pages by default
+- Lazy load heavy components (editors, charts, maps)
+- Lazy load rarely-used features
+- Use Suspense boundaries strategically
+
+## Related Rules
+
+- [Performance Rules](/rules/performance) - Runtime performance
+- [Next.js Rules](/rules/nextjs) - Next.js-specific optimizations

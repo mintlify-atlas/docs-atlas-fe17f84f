@@ -1,0 +1,512 @@
+---
+title: Custom Workflows
+description: Advanced React Doctor workflows and programmatic usage
+---
+
+## Programmatic API
+
+### Basic Usage
+
+```typescript
+import { diagnose } from "react-doctor/api";
+
+const result = await diagnose("./path/to/your/react-project");
+
+console.log(result.score); // { score: 82, label: "Good" } or null
+console.log(result.diagnostics); // Array of Diagnostic objects
+console.log(result.project); // Detected framework, React version, etc.
+```
+
+### With Options
+
+```typescript
+import { diagnose } from "react-doctor/api";
+
+const result = await diagnose(".", {
+  lint: true, // run lint checks (default: true)
+  deadCode: true, // run dead code detection (default: true)
+});
+
+// Filter by severity
+const errors = result.diagnostics.filter((d) => d.severity === "error");
+const warnings = result.diagnostics.filter((d) => d.severity === "warning");
+
+console.log(`Errors: ${errors.length}, Warnings: ${warnings.length}`);
+```
+
+### Diagnostic Structure
+
+Each diagnostic has this shape:
+
+```typescript
+interface Diagnostic {
+  filePath: string;
+  plugin: string;
+  rule: string;
+  severity: "error" | "warning";
+  message: string;
+  help: string;
+  line: number;
+  column: number;
+  category: string;
+}
+```
+
+## Custom Scripts
+
+### Score Tracking Script
+
+Track health score over time:
+
+```typescript track-score.ts
+import { diagnose } from "react-doctor/api";
+import { writeFileSync, readFileSync, existsSync } from "fs";
+
+const HISTORY_FILE = "react-doctor-history.json";
+
+interface ScoreEntry {
+  date: string;
+  score: number;
+  errors: number;
+  warnings: number;
+}
+
+const loadHistory = (): ScoreEntry[] => {
+  if (!existsSync(HISTORY_FILE)) return [];
+  return JSON.parse(readFileSync(HISTORY_FILE, "utf-8"));
+};
+
+const saveHistory = (history: ScoreEntry[]) => {
+  writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
+};
+
+const main = async () => {
+  const result = await diagnose(".");
+  
+  const entry: ScoreEntry = {
+    date: new Date().toISOString(),
+    score: result.score?.score ?? 0,
+    errors: result.diagnostics.filter((d) => d.severity === "error").length,
+    warnings: result.diagnostics.filter((d) => d.severity === "warning").length,
+  };
+
+  const history = loadHistory();
+  history.push(entry);
+  saveHistory(history);
+
+  console.log(`Score: ${entry.score}`);
+  console.log(`Errors: ${entry.errors}, Warnings: ${entry.warnings}`);
+  
+  if (history.length > 1) {
+    const previous = history[history.length - 2];
+    const diff = entry.score - previous.score;
+    console.log(`Change: ${diff > 0 ? "+" : ""}${diff}`);
+  }
+};
+
+main();
+```
+
+Run daily in CI and commit the history file.
+
+### Generate Report
+
+Create a formatted markdown report:
+
+```typescript generate-report.ts
+import { diagnose } from "react-doctor/api";
+import { writeFileSync } from "fs";
+
+const main = async () => {
+  const result = await diagnose(".");
+
+  const errors = result.diagnostics.filter((d) => d.severity === "error");
+  const warnings = result.diagnostics.filter((d) => d.severity === "warning");
+
+  const report = `# React Doctor Report
+
+**Score:** ${result.score?.score ?? "N/A"} / 100 (${result.score?.label ?? "Unknown"})
+
+**Framework:** ${result.project?.framework ?? "Unknown"}
+**React Version:** ${result.project?.reactVersion ?? "Unknown"}
+
+## Summary
+
+- Errors: ${errors.length}
+- Warnings: ${warnings.length}
+- Total Issues: ${result.diagnostics.length}
+
+## Issues by Category
+
+${generateCategoryBreakdown(result.diagnostics)}
+
+## Top Issues
+
+${generateTopIssues(errors, warnings)}
+`;
+
+  writeFileSync("react-doctor-report.md", report);
+  console.log("Report generated: react-doctor-report.md");
+};
+
+const generateCategoryBreakdown = (diagnostics: any[]) => {
+  const categories = new Map<string, number>();
+  
+  diagnostics.forEach((d) => {
+    categories.set(d.category, (categories.get(d.category) ?? 0) + 1);
+  });
+
+  return Array.from(categories.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([category, count]) => `- **${category}:** ${count}`)
+    .join("\n");
+};
+
+const generateTopIssues = (errors: any[], warnings: any[]) => {
+  const topIssues = [...errors.slice(0, 5), ...warnings.slice(0, 5)];
+  
+  if (topIssues.length === 0) return "No issues found!";
+
+  return topIssues
+    .map((d) => `### ${d.severity.toUpperCase()}: ${d.rule}\n\n${d.message}\n\n**File:** ${d.filePath}:${d.line}:${d.column}\n\n${d.help}`)
+    .join("\n\n---\n\n");
+};
+
+main();
+```
+
+## Combining with Other Tools
+
+### With ESLint
+
+Run React Doctor after ESLint:
+
+```json package.json
+{
+  "scripts": {
+    "lint": "eslint . && react-doctor . --fail-on error",
+    "lint:fix": "eslint . --fix && react-doctor . --verbose"
+  }
+}
+```
+
+### With Prettier
+
+```json package.json
+{
+  "scripts": {
+    "format": "prettier --write . && react-doctor . --score",
+    "check": "prettier --check . && react-doctor . --fail-on error"
+  }
+}
+```
+
+### With TypeScript
+
+Run in sequence:
+
+```json package.json
+{
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "validate": "npm run typecheck && react-doctor . --fail-on error"
+  }
+}
+```
+
+### With Jest
+
+Run after tests:
+
+```json package.json
+{
+  "scripts": {
+    "test": "jest",
+    "test:full": "jest && react-doctor . --verbose"
+  }
+}
+```
+
+## Fail-On Levels
+
+### Fail on Errors Only
+
+```bash
+npx -y react-doctor@latest . --fail-on error
+```
+
+Exit code 1 if any error-level diagnostics are found.
+
+### Fail on Warnings
+
+```bash
+npx -y react-doctor@latest . --fail-on warning
+```
+
+Exit code 1 if any diagnostics (errors or warnings) are found.
+
+### Never Fail
+
+```bash
+npx -y react-doctor@latest . --fail-on none
+```
+
+Always exit with code 0 (report only mode).
+
+### In Configuration
+
+```json react-doctor.config.json
+{
+  "failOn": "warning"
+}
+```
+
+CLI flag overrides config value:
+
+```bash
+# Config says "warning", but CLI overrides to "error"
+npx -y react-doctor@latest . --fail-on error
+```
+
+## Advanced Filtering
+
+### Filter by Category
+
+```typescript filter-by-category.ts
+import { diagnose } from "react-doctor/api";
+
+const result = await diagnose(".");
+
+// Get only performance issues
+const performanceIssues = result.diagnostics.filter(
+  (d) => d.category === "performance"
+);
+
+console.log(`Performance issues: ${performanceIssues.length}`);
+
+performanceIssues.forEach((issue) => {
+  console.log(`${issue.filePath}:${issue.line} - ${issue.message}`);
+});
+```
+
+### Filter by Plugin
+
+```typescript filter-by-plugin.ts
+import { diagnose } from "react-doctor/api";
+
+const result = await diagnose(".");
+
+// Get only React-specific issues
+const reactIssues = result.diagnostics.filter((d) => d.plugin === "react");
+
+// Get only dead code issues
+const deadCodeIssues = result.diagnostics.filter((d) => d.plugin === "knip");
+
+console.log(`React issues: ${reactIssues.length}`);
+console.log(`Dead code issues: ${deadCodeIssues.length}`);
+```
+
+### Filter by File Pattern
+
+```typescript filter-by-file.ts
+import { diagnose } from "react-doctor/api";
+
+const result = await diagnose(".");
+
+// Get issues in test files
+const testIssues = result.diagnostics.filter(
+  (d) => d.filePath.includes(".test.") || d.filePath.includes(".spec.")
+);
+
+// Get issues in components
+const componentIssues = result.diagnostics.filter(
+  (d) => d.filePath.includes("/components/")
+);
+
+console.log(`Test file issues: ${testIssues.length}`);
+console.log(`Component issues: ${componentIssues.length}`);
+```
+
+## Score Thresholds
+
+### Enforce Minimum Score
+
+```typescript enforce-score.ts
+import { diagnose } from "react-doctor/api";
+
+const MIN_SCORE = 75;
+
+const result = await diagnose(".");
+const score = result.score?.score ?? 0;
+
+if (score < MIN_SCORE) {
+  console.error(`Score ${score} is below minimum ${MIN_SCORE}`);
+  process.exit(1);
+}
+
+console.log(`Score ${score} meets minimum threshold`);
+```
+
+### Prevent Score Regression
+
+```typescript prevent-regression.ts
+import { diagnose } from "react-doctor/api";
+import { readFileSync, existsSync } from "fs";
+
+const BASELINE_FILE = "react-doctor-baseline.json";
+
+const result = await diagnose(".");
+const currentScore = result.score?.score ?? 0;
+
+if (existsSync(BASELINE_FILE)) {
+  const baseline = JSON.parse(readFileSync(BASELINE_FILE, "utf-8"));
+  const baselineScore = baseline.score ?? 0;
+
+  if (currentScore < baselineScore) {
+    console.error(
+      `Score regression detected: ${currentScore} < ${baselineScore}`
+    );
+    process.exit(1);
+  }
+
+  console.log(`Score improved: ${baselineScore} → ${currentScore}`);
+} else {
+  console.log("No baseline found. Current score:", currentScore);
+}
+```
+
+## Monorepo Workflows
+
+### Parallel Project Scans
+
+```typescript scan-all-projects.ts
+import { diagnose } from "react-doctor/api";
+import path from "path";
+
+const PROJECTS = ["apps/web", "apps/admin", "apps/mobile"];
+
+const scanAll = async () => {
+  const results = await Promise.all(
+    PROJECTS.map(async (project) => {
+      const result = await diagnose(path.join(process.cwd(), project));
+      return { project, result };
+    })
+  );
+
+  results.forEach(({ project, result }) => {
+    console.log(`\n${project}:`);
+    console.log(`  Score: ${result.score?.score ?? "N/A"}`);
+    console.log(`  Issues: ${result.diagnostics.length}`);
+  });
+
+  const totalIssues = results.reduce(
+    (sum, { result }) => sum + result.diagnostics.length,
+    0
+  );
+  console.log(`\nTotal issues across all projects: ${totalIssues}`);
+};
+
+scanAll();
+```
+
+### Conditional Project Scanning
+
+Scan only projects with changes:
+
+```bash scan-changed-projects.sh
+#!/bin/bash
+
+# Get changed files
+CHANGED_FILES=$(git diff --name-only main...HEAD)
+
+# Scan web if it changed
+if echo "$CHANGED_FILES" | grep -q "^apps/web/"; then
+  echo "Scanning web..."
+  npx -y react-doctor@latest apps/web --fail-on error
+fi
+
+# Scan admin if it changed
+if echo "$CHANGED_FILES" | grep -q "^apps/admin/"; then
+  echo "Scanning admin..."
+  npx -y react-doctor@latest apps/admin --fail-on error
+fi
+```
+
+## Notification Integrations
+
+### Slack Notification
+
+```typescript notify-slack.ts
+import { diagnose } from "react-doctor/api";
+
+const WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL!;
+
+const result = await diagnose(".");
+const score = result.score?.score ?? 0;
+const errors = result.diagnostics.filter((d) => d.severity === "error").length;
+const warnings = result.diagnostics.filter((d) => d.severity === "warning").length;
+
+const message = {
+  text: `React Doctor Scan Complete`,
+  blocks: [
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `*React Doctor Scan*\n\nScore: *${score}*/100\nErrors: ${errors}\nWarnings: ${warnings}`,
+      },
+    },
+  ],
+};
+
+await fetch(WEBHOOK_URL, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(message),
+});
+```
+
+### Discord Notification
+
+```typescript notify-discord.ts
+import { diagnose } from "react-doctor/api";
+
+const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL!;
+
+const result = await diagnose(".");
+const score = result.score?.score ?? 0;
+
+const embed = {
+  embeds: [
+    {
+      title: "React Doctor Scan Complete",
+      color: score >= 75 ? 0x00ff00 : score >= 50 ? 0xffff00 : 0xff0000,
+      fields: [
+        { name: "Score", value: `${score}/100`, inline: true },
+        { name: "Label", value: result.score?.label ?? "Unknown", inline: true },
+        { name: "Total Issues", value: String(result.diagnostics.length), inline: true },
+      ],
+    },
+  ],
+};
+
+await fetch(WEBHOOK_URL, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(embed),
+});
+```
+
+## Tips
+
+<Tip>
+  Use `--fail-on error` in development and `--fail-on warning` in production branches
+</Tip>
+
+<Tip>
+  Combine React Doctor with other tools in a single `validate` script for comprehensive checks
+</Tip>
+
+<Tip>
+  Track your score over time to visualize codebase health improvements
+</Tip>

@@ -1,0 +1,220 @@
+---
+title: Correctness Rules
+description: Rules for catching common React mistakes and bugs
+---
+
+These rules catch common React mistakes that lead to runtime errors or unexpected behavior.
+
+## Rules
+
+<Accordion title="no-array-index-as-key" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/no-array-index-as-key`
+
+  Prevents using array index as the `key` prop. This causes bugs when the list is reordered, filtered, or items are inserted/deleted.
+
+  **Why it's bad:**
+  - Keys don't follow items when list order changes
+  - Component state gets attached to wrong items
+  - Can cause data corruption in forms
+  - Poor performance due to unnecessary re-renders
+
+  **Bad:**
+  ```tsx
+  {items.map((item, index) => (
+    <Item key={index} {...item} />
+  ))}
+  ```
+
+  **Good:**
+  ```tsx
+  // Use stable unique ID
+  {items.map((item) => (
+    <Item key={item.id} {...item} />
+  ))}
+  
+  // Or generate stable IDs
+  const itemsWithIds = items.map((item, i) => ({
+    ...item,
+    id: item.id ?? `item-${i}`
+  }));
+  ```
+
+  **Exception:** Using index is acceptable for static lists that never change:
+  ```tsx
+  // ✅ OK - Array.from creates a static placeholder list
+  {Array.from({ length: 5 }).map((_, i) => (
+    <Skeleton key={i} />
+  ))}
+  ```
+
+  <Note>
+  This rule ignores index usage inside `Array.from()` or `new Array()` map calls, which are typically used for static placeholders.
+  </Note>
+</Accordion>
+
+<Accordion title="no-prevent-default" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/no-prevent-default`
+
+  Suggests using semantic HTML instead of `preventDefault()` on forms and links. This improves accessibility and progressive enhancement.
+
+  **Why it's bad:**
+  - Forms won't work without JavaScript
+  - Breaks browser features (right-click, middle-click)
+  - Poor accessibility for screen readers
+  - No progressive enhancement
+
+  **Bad:**
+  ```tsx
+  <a href="/dashboard" onClick={(e) => {
+    e.preventDefault();
+    navigate('/dashboard');
+  }}>Dashboard</a>
+  
+  <form onSubmit={(e) => {
+    e.preventDefault();
+    handleSubmit();
+  }}>
+  ```
+
+  **Good:**
+  ```tsx
+  // Use Link component for navigation
+  <Link href="/dashboard">Dashboard</Link>
+  
+  // Or button if not navigating
+  <button onClick={() => doSomething()}>Click</button>
+  
+  // Use server actions for forms
+  <form action={submitAction}>
+    <button type="submit">Submit</button>
+  </form>
+  ```
+
+  **Next.js Server Actions:**
+  ```tsx
+  // app/actions.ts
+  'use server';
+  
+  export async function submitForm(formData: FormData) {
+    const data = Object.fromEntries(formData);
+    // Process form...
+  }
+  
+  // app/page.tsx
+  import { submitForm } from './actions';
+  
+  export default function Page() {
+    return (
+      <form action={submitForm}>
+        <input name="email" />
+        <button type="submit">Submit</button>
+      </form>
+    );
+  }
+  ```
+</Accordion>
+
+<Accordion title="rendering-conditional-render" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/rendering-conditional-render`
+
+  Catches conditional rendering using `.length` which can render `0` to the screen instead of rendering nothing.
+
+  **Why it's bad:**
+  - In React, `0` is rendered as text
+  - Empty arrays have `.length === 0`
+  - Users see "0" instead of empty state
+  - Common mistake for beginners
+
+  **Bad:**
+  ```tsx
+  {items.length && <ItemList items={items} />}
+  // Renders "0" when items is empty!
+  ```
+
+  **Good:**
+  ```tsx
+  // Explicitly check > 0
+  {items.length > 0 && <ItemList items={items} />}
+  
+  // Or convert to boolean
+  {Boolean(items.length) && <ItemList items={items} />}
+  
+  // Or use ternary
+  {items.length ? <ItemList items={items} /> : null}
+  ```
+
+  **Why this happens:**
+  ```tsx
+  // JavaScript:
+  0 && 'anything' // evaluates to 0
+  1 && 'anything' // evaluates to 'anything'
+  
+  // React:
+  {0} // renders "0"
+  {false} // renders nothing
+  {null} // renders nothing
+  {undefined} // renders nothing
+  ```
+</Accordion>
+
+## Additional React Correctness Rules
+
+React Doctor includes built-in React rules from oxlint:
+
+### From react plugin:
+- `react/rules-of-hooks` (error) - Enforce Rules of Hooks
+- `react/jsx-key` (error) - Require key prop in lists
+- `react/jsx-no-duplicate-props` (error) - Prevent duplicate props
+- `react/no-direct-mutation-state` (error) - Prevent direct state mutation
+- `react/require-render-return` (error) - Require render() to return value
+
+### Server Component Rules:
+- `react-doctor/server-auth-actions` (error) - Require auth checks in server actions
+- `react-doctor/client-passive-event-listeners` (warn) - Use passive listeners for scroll/touch
+
+## Common Pitfalls
+
+### Keys in Lists
+```tsx
+// ❌ Don't use index
+{items.map((item, i) => <div key={i}>{item}</div>)}
+
+// ❌ Don't use unstable keys
+{items.map(item => <div key={Math.random()}>{item}</div>)}
+
+// ✅ Use stable unique IDs
+{items.map(item => <div key={item.id}>{item}</div>)}
+```
+
+### Conditional Rendering
+```tsx
+// ❌ Can render "0"
+{count && <div>{count}</div>}
+{items.length && <List />}
+
+// ✅ Safe patterns
+{count > 0 && <div>{count}</div>}
+{items.length > 0 && <List />}
+{Boolean(count) && <div>{count}</div>}
+{items.length ? <List /> : <Empty />}
+```
+
+### Event Handlers
+```tsx
+// ❌ Breaks accessibility
+<div onClick={handleClick}>Clickable</div>
+<a onClick={(e) => { e.preventDefault(); navigate(); }}>Link</a>
+
+// ✅ Semantic HTML
+<button onClick={handleClick}>Clickable</button>
+<Link href="/page">Link</Link>
+```
+
+## Related Rules
+
+- [State and Effects Rules](/rules/state-and-effects) - State management patterns
+- [Architecture Rules](/rules/architecture) - Component structure
+- [Next.js Rules](/rules/nextjs) - Next.js-specific correctness

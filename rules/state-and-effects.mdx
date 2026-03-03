@@ -1,0 +1,251 @@
+---
+title: State and Effects Rules
+description: Rules for proper React state management and useEffect usage
+---
+
+These rules catch common mistakes with `useState`, `useEffect`, and related hooks that lead to bugs, performance issues, or unnecessary re-renders.
+
+## Rules
+
+<Accordion title="no-derived-state-effect" icon="circle-xmark">
+  **Severity:** error  
+  **Rule ID:** `react-doctor/no-derived-state-effect`
+
+  Detects state that is derived from props or other state inside `useEffect`. This pattern is almost always wrong.
+
+  **Why it's bad:**
+  - Creates an extra render cycle
+  - State updates happen after render instead of during
+  - Can cause infinite loops if dependencies aren't perfect
+
+  **Bad:**
+  ```tsx
+  function UserProfile({ userId }) {
+    const [user, setUser] = useState(null);
+    
+    useEffect(() => {
+      setUser(fetchUser(userId));
+    }, [userId]);
+  }
+  ```
+
+  **Good:**
+  ```tsx
+  function UserProfile({ userId }) {
+    const user = fetchUser(userId); // Compute during render
+  }
+  ```
+
+  Or use a key to reset component state:
+  ```tsx
+  <UserProfile key={userId} />
+  ```
+</Accordion>
+
+<Accordion title="no-fetch-in-effect" icon="circle-xmark">
+  **Severity:** error  
+  **Rule ID:** `react-doctor/no-fetch-in-effect`
+
+  Prevents using `fetch()` directly inside `useEffect`. Manual data fetching leads to race conditions, missing loading states, and no caching.
+
+  **Why it's bad:**
+  - Race conditions when component unmounts
+  - No automatic deduplication or caching
+  - Missing loading/error states
+  - Waterfall requests
+
+  **Bad:**
+  ```tsx
+  useEffect(() => {
+    fetch('/api/data').then(r => r.json()).then(setData);
+  }, []);
+  ```
+
+  **Good:**
+  ```tsx
+  // Use a data fetching library
+  const { data } = useSWR('/api/data', fetcher);
+  
+  // Or a server component in Next.js
+  async function Page() {
+    const data = await fetch('/api/data');
+    return <UI data={data} />;
+  }
+  ```
+</Accordion>
+
+<Accordion title="no-cascading-set-state" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/no-cascading-set-state`
+
+  Flags `useEffect` containing 3 or more `setState` calls. This indicates state that should be managed together.
+
+  **Why it's bad:**
+  - Multiple setState calls = multiple re-renders
+  - Hard to keep state synchronized
+  - Suggests missing abstraction
+
+  **Bad:**
+  ```tsx
+  useEffect(() => {
+    setName(data.name);
+    setEmail(data.email);
+    setAge(data.age);
+  }, [data]);
+  ```
+
+  **Good:**
+  ```tsx
+  // Use useReducer for related state
+  const [state, dispatch] = useReducer(reducer, initialState);
+  
+  useEffect(() => {
+    dispatch({ type: 'SET_USER', payload: data });
+  }, [data]);
+  ```
+</Accordion>
+
+<Accordion title="no-effect-event-handler" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/no-effect-event-handler`
+
+  Detects `useEffect` that runs only when a specific value changes and contains a single if statement. This is usually an event handler in disguise.
+
+  **Bad:**
+  ```tsx
+  useEffect(() => {
+    if (isOpen) {
+      trackModal();
+    }
+  }, [isOpen]);
+  ```
+
+  **Good:**
+  ```tsx
+  function handleOpen() {
+    setIsOpen(true);
+    trackModal();
+  }
+  ```
+</Accordion>
+
+<Accordion title="no-derived-useState" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/no-derived-useState`
+
+  Catches `useState` initialized directly from a prop value. If the prop changes, state won't update.
+
+  **Bad:**
+  ```tsx
+  function Form({ initialValue }) {
+    const [value, setValue] = useState(initialValue);
+    // initialValue changes won't update state!
+  }
+  ```
+
+  **Good:**
+  ```tsx
+  // If you need to sync with prop changes:
+  function Form({ initialValue }) {
+    const [value, setValue] = useState(initialValue);
+    
+    useEffect(() => {
+      setValue(initialValue);
+    }, [initialValue]);
+  }
+  
+  // Or just derive it:
+  function Form({ value }) {
+    return <input value={value} />;
+  }
+  ```
+</Accordion>
+
+<Accordion title="prefer-useReducer" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/prefer-useReducer`
+
+  Suggests using `useReducer` when a component has 5+ `useState` calls for related state.
+
+  **Bad:**
+  ```tsx
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [age, setAge] = useState(0);
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
+  ```
+
+  **Good:**
+  ```tsx
+  const [state, dispatch] = useReducer(reducer, {
+    name: '',
+    email: '',
+    age: 0,
+    address: '',
+    phone: ''
+  });
+  ```
+</Accordion>
+
+<Accordion title="rerender-lazy-state-init" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/rerender-lazy-state-init`
+
+  Enforces lazy initialization for `useState` when initialized with a function call. The function runs on every render even though only the first result is used.
+
+  **Bad:**
+  ```tsx
+  const [state, setState] = useState(expensiveComputation());
+  // expensiveComputation() runs on EVERY render
+  ```
+
+  **Good:**
+  ```tsx
+  const [state, setState] = useState(() => expensiveComputation());
+  // Only runs once on mount
+  ```
+</Accordion>
+
+<Accordion title="rerender-functional-setstate" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/rerender-functional-setstate`
+
+  Requires using functional updates when the new state depends on the old state to avoid stale closures.
+
+  **Bad:**
+  ```tsx
+  setCount(count + 1);
+  ```
+
+  **Good:**
+  ```tsx
+  setCount(prev => prev + 1);
+  ```
+</Accordion>
+
+<Accordion title="rerender-dependencies" icon="circle-xmark">
+  **Severity:** error  
+  **Rule ID:** `react-doctor/rerender-dependencies`
+
+  Catches object literals and array literals in dependency arrays. These create new references every render, causing the effect to run infinitely.
+
+  **Bad:**
+  ```tsx
+  useEffect(() => {
+    doSomething();
+  }, [{ id: userId }]); // New object every render!
+  ```
+
+  **Good:**
+  ```tsx
+  useEffect(() => {
+    doSomething();
+  }, [userId]); // Primitive value
+  ```
+</Accordion>
+
+## Related Rules
+
+- [Performance Rules](/rules/performance) - Rendering optimization rules
+- [Architecture Rules](/rules/architecture) - Component structure rules

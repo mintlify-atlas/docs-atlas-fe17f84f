@@ -1,0 +1,444 @@
+---
+title: Diff Mode
+description: Scan only changed files for faster feedback in PRs and feature branches
+---
+
+Diff mode scans only files that changed compared to a base branch, making React Doctor extremely fast even in large codebases.
+
+## Quick Start
+
+Run with `--diff` to scan only changed files:
+
+```bash
+npx react-doctor . --diff
+```
+
+React Doctor automatically:
+
+1. Detects your current branch
+2. Finds the base branch (usually `main` or `master`)
+3. Identifies changed source files
+4. Scans only those files
+
+<Info>
+  Diff mode uses Git to detect changes. Your project must be a Git repository.
+</Info>
+
+## How Diff Mode Works
+
+React Doctor compares your current state to a base branch:
+
+<Steps>
+  <Step title="Detect Git repository">
+    Verifies the directory is a Git repo
+  </Step>
+  
+  <Step title="Identify base branch">
+    Looks for `main` or `master` branch
+  </Step>
+  
+  <Step title="Get changed files">
+    Runs `git diff --name-only` to find modified files
+  </Step>
+  
+  <Step title="Filter source files">
+    Includes only `.ts`, `.tsx`, `.js`, `.jsx` files
+  </Step>
+  
+  <Step title="Run checks">
+    Scans only the filtered changed files
+  </Step>
+</Steps>
+
+<Tip>
+  Diff mode is much faster than full scans. Use it in CI/CD, pre-commit hooks, and during development.
+</Tip>
+
+## Specifying Base Branch
+
+Override the auto-detected base branch:
+
+```bash
+npx react-doctor . --diff develop
+```
+
+This compares against the `develop` branch instead of `main`.
+
+### Common Use Cases
+
+```bash
+# Compare to main
+npx react-doctor . --diff main
+
+# Compare to master
+npx react-doctor . --diff master
+
+# Compare to develop
+npx react-doctor . --diff develop
+
+# Compare to specific commit
+npx react-doctor . --diff abc123
+```
+
+## Uncommitted Changes
+
+If you have uncommitted changes, React Doctor detects them:
+
+```bash
+npx react-doctor . --diff
+# Found 5 uncommitted changed files. Only scan current changes? (Y/n)
+```
+
+This scans only your working directory changes without committing.
+
+<Info>
+  Uncommitted changes mode compares your current state to the last commit (HEAD).
+</Info>
+
+## Feature Branch Detection
+
+When you're on a feature branch, React Doctor asks:
+
+```bash
+npx react-doctor . --diff
+# On branch feat/login (12 changed files vs main). Only scan this branch? (Y/n)
+```
+
+Accepting scans only files changed in your feature branch.
+
+## Forcing Diff Mode
+
+Pin diff mode in your config to always scan only changes:
+
+```json react-doctor.config.json
+{
+  "diff": true
+}
+```
+
+Or specify a base branch:
+
+```json react-doctor.config.json
+{
+  "diff": "main"
+}
+```
+
+<Warning>
+  CLI flags override config. Running `npx react-doctor .` (without `--diff`) will still do a full scan even if diff is in the config.
+</Warning>
+
+## Disabling Auto-Detection
+
+Preventing React Doctor from prompting about diff mode:
+
+```json react-doctor.config.json
+{
+  "diff": false
+}
+```
+
+This disables automatic detection and prompts.
+
+## Diff Mode in CI/CD
+
+Diff mode is ideal for pull request checks:
+
+### GitHub Actions
+
+```yaml .github/workflows/react-doctor.yml
+name: React Doctor
+
+on:
+  pull_request:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # Required for diff mode
+      
+      - uses: millionco/react-doctor@main
+        with:
+          diff: main
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+<Info>
+  Set `fetch-depth: 0` to fetch full Git history. React Doctor needs this to compare branches.
+</Info>
+
+### GitLab CI
+
+```yaml .gitlab-ci.yml
+react-doctor:
+  stage: test
+  script:
+    - npx react-doctor . --diff $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+  only:
+    - merge_requests
+```
+
+### Bitbucket Pipelines
+
+```yaml bitbucket-pipelines.yml
+pipelines:
+  pull-requests:
+    '**':
+      - step:
+          name: React Doctor
+          script:
+            - git fetch origin $BITBUCKET_PR_DESTINATION_BRANCH
+            - npx react-doctor . --diff origin/$BITBUCKET_PR_DESTINATION_BRANCH
+```
+
+## Diff Mode Limitations
+
+### Dead Code Detection Skipped
+
+Dead code analysis requires scanning the entire codebase to detect unused exports. React Doctor automatically **skips dead code detection** in diff mode:
+
+```bash
+npx react-doctor . --diff
+# Only runs lint checks on changed files
+```
+
+If you need dead code detection, run a full scan:
+
+```bash
+npx react-doctor .
+```
+
+### Context-Dependent Rules
+
+Some issues span multiple files. Diff mode may miss:
+
+- Unused props passed from unchanged parent components
+- Missing imports in unchanged files
+- Type errors in unchanged files that depend on changed files
+
+<Tip>
+  Run full scans periodically (e.g., on merge to main) to catch context-dependent issues.
+</Tip>
+
+## Git Integration
+
+React Doctor uses standard Git commands:
+
+### Current Branch Detection
+
+```bash
+git rev-parse --abbrev-ref HEAD
+```
+
+### Base Branch Detection
+
+```bash
+git rev-parse --verify main
+git rev-parse --verify master
+```
+
+Falls back to `master` if `main` doesn't exist.
+
+### Changed Files
+
+```bash
+git diff --name-only main...HEAD
+```
+
+Uses three-dot notation to compare from the merge base.
+
+### Uncommitted Changes
+
+```bash
+git diff --name-only HEAD
+```
+
+Lists files modified since the last commit.
+
+<Info>
+  React Doctor requires Git 2.0+ for proper diff detection.
+</Info>
+
+## Pre-Commit Hooks
+
+Run React Doctor on staged files before committing:
+
+### Using Husky
+
+Install Husky:
+
+```bash
+npm install --save-dev husky
+npx husky init
+```
+
+Add pre-commit hook:
+
+```bash .husky/pre-commit
+#!/usr/bin/env sh
+npx react-doctor . --diff --no-ami
+```
+
+The `--no-ami` flag skips interactive prompts.
+
+### Using lint-staged
+
+For more control, use `lint-staged`:
+
+```bash
+npm install --save-dev lint-staged husky
+```
+
+Configure in `package.json`:
+
+```json package.json
+{
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "npx react-doctor . --diff --no-ami"
+    ]
+  }
+}
+```
+
+Add hook:
+
+```bash .husky/pre-commit
+#!/usr/bin/env sh
+npx lint-staged
+```
+
+<Warning>
+  Pre-commit hooks can slow down commits if scans take too long. Consider using diff mode or `--score` for faster feedback.
+</Warning>
+
+## Combining with Other Flags
+
+### Diff + Verbose
+
+See which files have issues:
+
+```bash
+npx react-doctor . --diff --verbose
+```
+
+### Diff + Project
+
+Scan only changed files in a specific monorepo project:
+
+```bash
+npx react-doctor . --project web --diff
+```
+
+### Diff + Score
+
+Get only the score for changed files:
+
+```bash
+npx react-doctor . --diff --score
+```
+
+Useful for CI checks:
+
+```bash
+SCORE=$(npx react-doctor . --diff --score)
+if [ "$SCORE" -lt 75 ]; then
+  echo "Score too low: $SCORE"
+  exit 1
+fi
+```
+
+## Troubleshooting Diff Mode
+
+### "No feature branch or uncommitted changes detected"
+
+You're on the base branch (`main`/`master`) with no changes. Diff mode falls back to full scan.
+
+To use diff mode:
+
+1. Create a feature branch: `git checkout -b feat/my-feature`
+2. Make changes and commit
+3. Run `npx react-doctor . --diff`
+
+### "fetch-depth: 0 required" in CI
+
+GitHub Actions checks out only the latest commit by default. Add:
+
+```yaml
+- uses: actions/checkout@v5
+  with:
+    fetch-depth: 0
+```
+
+### Diff Mode Finds No Files
+
+If no source files changed:
+
+```bash
+npx react-doctor . --diff
+# No changed source files, skipping.
+```
+
+This is expected if you only modified config, markdown, or other non-source files.
+
+### Base Branch Not Found
+
+If React Doctor can't find `main` or `master`:
+
+```bash
+npx react-doctor . --diff develop
+```
+
+Explicitly specify the base branch.
+
+## Best Practices
+
+### 1. Use Diff Mode in CI
+
+Scan only PR changes for fast feedback:
+
+```yaml
+- uses: millionco/react-doctor@main
+  with:
+    diff: main
+```
+
+### 2. Run Full Scans on Main
+
+Catch issues missed by diff mode:
+
+```yaml
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  scan:
+    steps:
+      - uses: millionco/react-doctor@main
+        # No diff flag = full scan
+```
+
+### 3. Use Diff Mode During Development
+
+Get instant feedback while coding:
+
+```bash
+npx react-doctor . --diff --verbose
+```
+
+### 4. Combine with Monorepo Project Selection
+
+Maximum speed in large monorepos:
+
+```bash
+npx react-doctor . --project web --diff
+```
+
+<Tip>
+  Diff mode + project selection is the fastest way to get feedback in large codebases.
+</Tip>

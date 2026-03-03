@@ -1,0 +1,166 @@
+---
+title: Security Rules
+description: Rules for preventing security vulnerabilities in React applications
+---
+
+These rules help prevent common security vulnerabilities like code injection and exposed secrets.
+
+## Rules
+
+<Accordion title="no-eval" icon="circle-xmark">
+  **Severity:** error  
+  **Rule ID:** `react-doctor/no-eval`
+
+  Prevents `eval()`, `new Function()`, and string-based code execution. These are major code injection risks.
+
+  **Why it's dangerous:**
+  - Allows arbitrary code execution
+  - Common XSS vector
+  - Bypasses Content Security Policy
+  - Opens door to injection attacks
+
+  **Bad:**
+  ```tsx
+  // Direct eval
+  eval(userInput);
+  
+  // new Function
+  new Function('return ' + userInput)();
+  
+  // setTimeout/setInterval with strings
+  setTimeout('alert(1)', 100);
+  setInterval('doSomething()', 1000);
+  ```
+
+  **Good:**
+  ```tsx
+  // Use functions instead
+  setTimeout(() => alert(1), 100);
+  setInterval(() => doSomething(), 1000);
+  
+  // For dynamic code, use safe alternatives
+  const safeEval = new Function('return ' + sanitizedExpression);
+  ```
+
+  <Note>
+  If you absolutely need dynamic code execution, use a sandboxed environment like [VM2](https://github.com/patriksimek/vm2) or Web Workers with restricted permissions.
+  </Note>
+</Accordion>
+
+<Accordion title="no-secrets-in-client-code" icon="circle-xmark">
+  **Severity:** error  
+  **Rule ID:** `react-doctor/no-secrets-in-client-code`
+
+  Detects hardcoded secrets, API keys, and tokens in client-side code. Client code is public and secrets should never be embedded.
+
+  **Why it's dangerous:**
+  - Anyone can view client-side code
+  - API keys can be extracted and abused
+  - Can lead to unauthorized access
+  - May violate service ToS
+
+  **Patterns detected:**
+  - Stripe keys: `sk_live_*`, `sk_test_*`
+  - AWS keys: `AKIA[0-9A-Z]{16}`
+  - GitHub tokens: `ghp_*`, `gho_*`, `github_pat_*`
+  - GitLab tokens: `glpat-*`
+  - Slack tokens: `xox[bporas]-*`
+  - OpenAI keys: `sk-[a-zA-Z0-9]{32,}`
+  - Variables named: `apiKey`, `secret`, `token`, `password`, `credential`
+
+  **Bad:**
+  ```tsx
+  const STRIPE_SECRET_KEY = 'sk_live_abc123...';
+  const API_KEY = 'very-secret-key';
+  const githubToken = 'ghp_abc123...';
+  ```
+
+  **Good:**
+  ```tsx
+  // Use environment variables
+  const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+  
+  // For truly secret keys, keep them server-side only
+  // pages/api/stripe.ts
+  const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+  ```
+
+  <Note>
+  In Next.js, only variables prefixed with `NEXT_PUBLIC_` are exposed to the client. Never prefix secret keys with `NEXT_PUBLIC_`.
+  </Note>
+
+  **Environment variable setup:**
+  ```bash
+  # .env.local (never commit this!)
+  STRIPE_SECRET_KEY=sk_live_...
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
+  ```
+
+  **False positive reduction:**
+  This rule ignores variables ending with common UI-related suffixes like `_LABEL`, `_TEXT`, `_TITLE`, `_NAME`, `_ID`, `_URL`, etc.
+</Accordion>
+
+## Additional Security Best Practices
+
+While these rules catch common issues, follow these practices for secure React apps:
+
+### API Keys
+- **Never** commit `.env` files to git
+- Use `.env.local` for local development
+- Use platform environment variables in production
+- Rotate leaked keys immediately
+
+### Client vs Server
+```tsx
+// ✅ Client-safe (public keys)
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+NEXT_PUBLIC_ANALYTICS_ID
+
+// ❌ Server-only (secret keys)
+STRIPE_SECRET_KEY
+DATABASE_URL
+JWT_SECRET
+```
+
+### Content Security Policy
+Implement CSP headers to prevent XSS:
+
+```tsx
+// next.config.js
+module.exports = {
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'self'; script-src 'self'"
+          }
+        ]
+      }
+    ];
+  }
+};
+```
+
+### Input Sanitization
+Always sanitize user input:
+
+```tsx
+import DOMPurify from 'isomorphic-dompurify';
+
+const sanitized = DOMPurify.sanitize(userInput);
+```
+
+### React Security
+- Avoid `dangerouslySetInnerHTML`
+- Use the `jsx-a11y/no-script-url` rule
+- Enable the `react/no-danger` rule
+- Validate all user input server-side
+
+## Related Rules
+
+- [Correctness Rules](/rules/correctness) - Common React bugs
+- [Next.js Rules](/rules/nextjs) - Next.js security patterns

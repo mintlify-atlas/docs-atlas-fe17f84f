@@ -1,0 +1,189 @@
+---
+title: Architecture Rules
+description: Rules for maintainable React component structure and organization
+---
+
+These rules help you maintain clean, maintainable React code by catching architectural anti-patterns.
+
+## Rules
+
+<Accordion title="no-generic-handler-names" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/no-generic-handler-names`
+
+  Requires descriptive event handler names. Names like `handleClick` don't describe *what* the handler does, making code harder to understand.
+
+  **Why it's bad:**
+  - `handleClick` doesn't explain the action
+  - Multiple handlers in a component become confusing
+  - Reduces code readability
+
+  **Bad:**
+  ```tsx
+  <button onClick={handleClick}>Submit</button>
+  <button onClick={handleChange}>Update</button>
+  ```
+
+  **Good:**
+  ```tsx
+  <button onClick={handleSubmit}>Submit</button>
+  <button onClick={handleUpdateProfile}>Update</button>
+  ```
+
+  Generic suffixes detected: Click, Change, Input, Blur, Focus.
+</Accordion>
+
+<Accordion title="no-giant-component" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/no-giant-component`
+
+  Flags components over 300 lines. Large components are hard to understand, test, and maintain.
+
+  **Why it's bad:**
+  - Difficult to understand at a glance
+  - Hard to test in isolation
+  - Often violates single responsibility principle
+  - Makes refactoring risky
+
+  **Bad:**
+  ```tsx
+  function Dashboard() {
+    // 500 lines of code...
+  }
+  ```
+
+  **Good:**
+  ```tsx
+  function Dashboard() {
+    return (
+      <>
+        <DashboardHeader />
+        <DashboardMetrics />
+        <DashboardTable />
+        <DashboardFooter />
+      </>
+    );
+  }
+  ```
+
+  Consider breaking large components into:
+  - Smaller sub-components
+  - Custom hooks for logic
+  - Utility functions for calculations
+</Accordion>
+
+<Accordion title="no-render-in-render" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/no-render-in-render`
+
+  Prevents calling render functions inline (e.g., `renderHeader()` in JSX). This breaks React's reconciliation and causes unnecessary re-renders.
+
+  **Why it's bad:**
+  - React can't track component identity
+  - State is lost on every render
+  - Poor performance
+  - Can't use hooks in render functions
+
+  **Bad:**
+  ```tsx
+  function Page() {
+    const renderHeader = () => <Header />;
+    
+    return <div>{renderHeader()}</div>;
+  }
+  ```
+
+  **Good:**
+  ```tsx
+  function Page() {
+    return (
+      <div>
+        <Header />
+      </div>
+    );
+  }
+  ```
+
+  Detects function names matching `/^render[A-Z]/`.
+</Accordion>
+
+<Accordion title="no-nested-component-definition" icon="circle-xmark">
+  **Severity:** error  
+  **Rule ID:** `react-doctor/no-nested-component-definition`
+
+  Prevents defining components inside other components. This creates a new component instance on every render, destroying all state.
+
+  **Why it's bad:**
+  - Component recreated on every parent render
+  - All state is lost
+  - Props change even if values are the same
+  - Performance impact
+
+  **Bad:**
+  ```tsx
+  function Parent() {
+    const [count, setCount] = useState(0);
+    
+    function Child() {
+      // This is recreated every time Parent renders!
+      return <div>Child</div>;
+    }
+    
+    return <Child />;
+  }
+  ```
+
+  **Good:**
+  ```tsx
+  function Child() {
+    return <div>Child</div>;
+  }
+  
+  function Parent() {
+    const [count, setCount] = useState(0);
+    return <Child />;
+  }
+  ```
+
+  If you need to pass parent state, use props:
+  ```tsx
+  function Child({ count }) {
+    return <div>{count}</div>;
+  }
+  
+  function Parent() {
+    const [count, setCount] = useState(0);
+    return <Child count={count} />;
+  }
+  ```
+</Accordion>
+
+## Best Practices
+
+### Component Size
+Keep components focused and small:
+- Extract complex logic into custom hooks
+- Break UI into smaller sub-components
+- Use composition over giant components
+
+### Component Organization
+```tsx
+// ✅ Good file structure
+components/
+  Dashboard/
+    Dashboard.tsx       // Main component
+    DashboardHeader.tsx // Sub-components
+    DashboardMetrics.tsx
+    useDashboard.ts     // Custom hook
+    types.ts            // Types
+```
+
+### Naming Conventions
+- Components: PascalCase (`UserProfile`)
+- Handlers: descriptive names (`handleSubmitForm`, `handleDeleteUser`)
+- Hooks: start with `use` (`useAuth`, `useDashboard`)
+
+## Related Rules
+
+- [State and Effects Rules](/rules/state-and-effects) - State management patterns
+- [Performance Rules](/rules/performance) - Rendering optimization

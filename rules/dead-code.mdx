@@ -1,0 +1,320 @@
+---
+title: Dead Code Detection
+description: Knip integration for finding unused files, exports, types, and duplicates
+---
+
+React Doctor integrates [Knip](https://knip.dev) to detect dead code across your entire codebase. This helps you identify and remove unused code that bloats your bundle and makes maintenance harder.
+
+## What Dead Code is Detected
+
+Knip analyzes your project to find:
+
+<CardGroup cols={2}>
+  <Card title="Unused Files" icon="file">
+    Files that aren't imported anywhere in your project
+  </Card>
+  <Card title="Unused Exports" icon="arrow-up-from-bracket">
+    Exported functions, components, or variables that are never imported
+  </Card>
+  <Card title="Unused Types" icon="t">
+    TypeScript types and interfaces that aren't used
+  </Card>
+  <Card title="Duplicate Exports" icon="copy">
+    The same symbol exported multiple times
+  </Card>
+</CardGroup>
+
+## Rules
+
+### knip/files
+**Severity:** warning
+
+Detects files that aren't imported by any other file in the project.
+
+**Example output:**
+```
+src/utils/old-helper.ts
+  Dead Code • Unused file
+```
+
+**Common causes:**
+- Leftover files from refactoring
+- Old implementations that were replaced
+- Test files in wrong location
+- Files that should be deleted
+
+### knip/exports
+**Severity:** warning
+
+Detects exported values that are never imported elsewhere.
+
+**Example output:**
+```
+src/components/Button.tsx:45
+  Dead Code • Unused export: ButtonVariant
+```
+
+**When to remove:**
+- Function is only used internally → Make it private
+- Old API no longer used → Delete it
+- Over-exported helpers → Remove export
+
+**When to keep:**
+- Public API for library consumers
+- Explicitly exported for future use
+- Required by build tools or frameworks
+
+### knip/types
+**Severity:** warning
+
+Detects TypeScript types and interfaces that aren't referenced.
+
+**Example output:**
+```
+src/types.ts:12
+  Dead Code • Unused type: OldUserProfile
+```
+
+**Common scenarios:**
+- Legacy types from refactoring
+- Over-engineered type definitions
+- Types that were used by deleted code
+
+### knip/duplicates
+**Severity:** warning
+
+Detects the same symbol exported multiple times in different files.
+
+**Example output:**
+```
+src/utils/format.ts:10
+src/helpers/format.ts:5
+  Dead Code • Duplicate export: formatDate
+```
+
+**Why it's bad:**
+- Confusing for developers
+- Inconsistent behavior
+- Harder to refactor
+- May cause bundler issues
+
+## How Knip Works
+
+Knip performs static analysis of your codebase:
+
+1. **Finds entry points** (pages, API routes, root files)
+2. **Follows imports** from entry points
+3. **Builds dependency graph** of your entire project
+4. **Identifies unreachable code** not in the graph
+5. **Reports findings** as diagnostics
+
+### Entry Points
+
+Knip automatically detects common entry points:
+- Next.js pages and app routes
+- API routes
+- Server actions
+- Configuration files (next.config.js, etc.)
+- Test files
+- Build scripts in package.json
+
+## Configuration
+
+### Project-level Knip Config
+
+You can customize Knip behavior with a `knip.json` file:
+
+```json
+{
+  "entry": ["src/index.ts"],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignore": [
+    "src/generated/**",
+    "**/*.test.ts"
+  ],
+  "ignoreDependencies": [
+    "@types/*"
+  ]
+}
+```
+
+### Ignoring Dead Code via Config
+
+Ignore specific Knip rules in `react-doctor.json`:
+
+```json
+{
+  "ignore": {
+    "rules": [
+      "knip/exports",
+      "knip/types"
+    ]
+  }
+}
+```
+
+Or ignore all dead code detection:
+
+```json
+{
+  "ignore": {
+    "rules": ["knip/*"]
+  }
+}
+```
+
+### Ignoring Specific Files
+
+```json
+{
+  "ignore": {
+    "files": ["src/generated/**"],
+    "rules": ["knip/*"]
+  }
+}
+```
+
+## When to Ignore Dead Code
+
+### Public APIs
+If you're building a library, many exports may be intentionally unused:
+
+```tsx
+// ✅ OK - Public API for consumers
+export { Button, Input, Select, Checkbox };
+```
+
+### Framework Requirements
+Some frameworks require specific exports:
+
+```tsx
+// ✅ OK - Next.js requires these exports
+export const metadata = { /* ... */ };
+export const dynamic = 'force-static';
+```
+
+### Gradual Refactoring
+When refactoring, you might want to keep old code temporarily:
+
+```tsx
+// ✅ OK temporarily - Will be removed after migration
+export const legacyFormatter = (date: Date) => { /* ... */ };
+```
+
+### Generated Code
+Generated code often has unused exports:
+
+```json
+{
+  "ignore": {
+    "files": ["src/generated/**"],
+    "rules": ["knip/exports", "knip/types"]
+  }
+}
+```
+
+## Best Practices
+
+### Regular Cleanup
+Run dead code detection regularly:
+
+```bash
+# In CI/CD
+react-doctor scan --fail-on=dead-code
+
+# Or as pre-commit hook
+react-doctor scan --rules=knip/*
+```
+
+### Review Before Deleting
+Not all "dead code" should be deleted:
+- Check if it's part of public API
+- Verify it's not used by external consumers
+- Confirm it's not required by framework
+- Ask team if anyone is working on using it
+
+### Start Small
+Don't try to fix everything at once:
+
+1. Start with unused files (safest to delete)
+2. Move to unused exports
+3. Finally tackle unused types
+4. Fix duplicates as you encounter them
+
+### Document Intentional Unused Code
+
+```tsx
+// Exported for future API extension
+export { InternalHelper };
+
+// Required by framework plugin system
+export const plugin = { /* ... */ };
+```
+
+## Monorepo Support
+
+Knip automatically handles monorepos:
+
+```json
+// package.json at root
+{
+  "workspaces": ["packages/*"]
+}
+```
+
+React Doctor will:
+1. Detect monorepo structure
+2. Run Knip at workspace level
+3. Analyze cross-package imports
+4. Report dead code per package
+
+## Performance Tips
+
+### Exclude Large Directories
+
+```json
+{
+  "ignore": {
+    "files": [
+      "node_modules/**",
+      ".next/**",
+      "dist/**",
+      "build/**"
+    ]
+  }
+}
+```
+
+### Incremental Analysis
+
+Knip analysis can be slow on large codebases. Consider:
+- Running only on CI, not locally
+- Excluding dead code checks from `watch` mode
+- Using file-based ignores for generated code
+
+## False Positives
+
+Knip may report false positives for:
+
+### Dynamic Imports
+```tsx
+// Knip might miss this
+const module = await import(`./plugins/${name}`);
+```
+
+### Build-time Code Generation
+```tsx
+// Used by build tool, but Knip doesn't know
+export const metadata = { /* ... */ };
+```
+
+### External Consumers
+If your package is consumed externally, exports will appear unused.
+
+**Solution:** Maintain a list of public API exports and exclude from dead code detection.
+
+## Related
+
+- [Configuration Guide](/usage/configuration) - How to configure rule ignores
+- [CLI Commands](/usage/cli-commands) - Command line options for diagnostics
+- [Knip Documentation](https://knip.dev) - Full Knip documentation

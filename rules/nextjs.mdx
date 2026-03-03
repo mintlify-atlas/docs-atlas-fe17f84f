@@ -1,0 +1,466 @@
+---
+title: Next.js Rules
+description: Next.js-specific optimization and App Router best practices
+---
+
+These 16 rules are automatically enabled when React Doctor detects a Next.js project. They catch Next.js-specific issues and enforce framework best practices.
+
+## Rules
+
+<Accordion title="nextjs-no-img-element" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/nextjs-no-img-element`
+
+  Requires using `next/image` instead of plain `<img>` tags for automatic optimization.
+
+  **Why it's bad:**
+  - No automatic optimization
+  - No lazy loading by default
+  - No responsive srcset generation
+  - Larger cumulative layout shift
+
+  **Bad:**
+  ```tsx
+  <img src="/hero.jpg" alt="Hero" />
+  ```
+
+  **Good:**
+  ```tsx
+  import Image from 'next/image';
+  
+  <Image src="/hero.jpg" alt="Hero" width={800} height={600} />
+  ```
+
+  <Note>
+  This rule is disabled in OG image routes (`/app/og/route.tsx`) where you need raw `<img>` for OpenGraph image generation.
+  </Note>
+</Accordion>
+
+<Accordion title="nextjs-async-client-component" icon="circle-xmark">
+  **Severity:** error  
+  **Rule ID:** `react-doctor/nextjs-async-client-component`
+
+  Prevents marking client components as `async`. Client components cannot be async functions.
+
+  **Bad:**
+  ```tsx
+  'use client';
+  
+  export default async function Page() {
+    const data = await fetch('/api/data');
+    return <div>{data}</div>;
+  }
+  ```
+
+  **Good:**
+  ```tsx
+  // Remove 'use client' to make it a server component
+  export default async function Page() {
+    const data = await fetch('/api/data');
+    return <div>{data}</div>;
+  }
+  
+  // Or fetch client-side
+  'use client';
+  export default function Page() {
+    const { data } = useSWR('/api/data');
+    return <div>{data}</div>;
+  }
+  ```
+</Accordion>
+
+<Accordion title="nextjs-no-a-element" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/nextjs-no-a-element`
+
+  Requires using `next/link` for internal navigation to enable client-side routing and prefetching.
+
+  **Bad:**
+  ```tsx
+  <a href="/dashboard">Dashboard</a>
+  ```
+
+  **Good:**
+  ```tsx
+  import Link from 'next/link';
+  
+  <Link href="/dashboard">Dashboard</Link>
+  
+  // For external links, use <a>
+  <a href="https://example.com">External</a>
+  ```
+</Accordion>
+
+<Accordion title="nextjs-no-use-search-params-without-suspense" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/nextjs-no-use-search-params-without-suspense`
+
+  Requires wrapping `useSearchParams()` in a Suspense boundary to prevent the entire page from falling back to client-side rendering.
+
+  **Why it's bad:**
+  - Entire page renders on client instead of server
+  - Slower initial page load
+  - Loses benefits of server components
+
+  **Bad:**
+  ```tsx
+  'use client';
+  export default function Page() {
+    const searchParams = useSearchParams();
+    return <div>{searchParams.get('q')}</div>;
+  }
+  ```
+
+  **Good:**
+  ```tsx
+  // Wrap in Suspense
+  function SearchResults() {
+    const searchParams = useSearchParams();
+    return <div>{searchParams.get('q')}</div>;
+  }
+  
+  export default function Page() {
+    return (
+      <Suspense fallback={<Loading />}>
+        <SearchResults />
+      </Suspense>
+    );
+  }
+  ```
+</Accordion>
+
+<Accordion title="nextjs-no-client-fetch-for-server-data" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/nextjs-no-client-fetch-for-server-data`
+
+  Prevents using `useEffect` + `fetch` in page/layout files. Data should be fetched server-side.
+
+  **Bad:**
+  ```tsx
+  'use client';
+  export default function Page() {
+    const [data, setData] = useState();
+    
+    useEffect(() => {
+      fetch('/api/data').then(r => r.json()).then(setData);
+    }, []);
+  }
+  ```
+
+  **Good:**
+  ```tsx
+  // Remove 'use client' - fetch server-side
+  export default async function Page() {
+    const data = await fetch('/api/data');
+    return <UI data={data} />;
+  }
+  ```
+</Accordion>
+
+<Accordion title="nextjs-missing-metadata" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/nextjs-missing-metadata`
+
+  Requires page files to export `metadata` or `generateMetadata` for SEO.
+
+  **Bad:**
+  ```tsx
+  // app/page.tsx
+  export default function Page() {
+    return <div>Content</div>;
+  }
+  ```
+
+  **Good:**
+  ```tsx
+  import type { Metadata } from 'next';
+  
+  export const metadata: Metadata = {
+    title: 'Page Title',
+    description: 'Page description',
+  };
+  
+  export default function Page() {
+    return <div>Content</div>;
+  }
+  
+  // Or dynamic metadata
+  export async function generateMetadata({ params }): Promise<Metadata> {
+    return {
+      title: `Post ${params.id}`,
+    };
+  }
+  ```
+
+  <Note>
+  This rule ignores internal routes like `/app/(dashboard)/`, `/app/admin/`, etc.
+  </Note>
+</Accordion>
+
+<Accordion title="nextjs-no-client-side-redirect" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/nextjs-no-client-side-redirect`
+
+  Suggests using `redirect()` in server components or middleware instead of client-side redirects.
+
+  **Bad:**
+  ```tsx
+  useEffect(() => {
+    router.push('/login');
+  }, []);
+  ```
+
+  **Good:**
+  ```tsx
+  // Server component
+  import { redirect } from 'next/navigation';
+  
+  export default async function Page() {
+    const session = await getSession();
+    if (!session) redirect('/login');
+  }
+  ```
+</Accordion>
+
+<Accordion title="nextjs-no-redirect-in-try-catch" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/nextjs-no-redirect-in-try-catch`
+
+  Prevents calling `redirect()` inside try-catch blocks. `redirect()` throws a special error that Next.js handles internally.
+
+  **Bad:**
+  ```tsx
+  try {
+    const user = await getUser();
+    if (!user) redirect('/login');
+  } catch (error) {
+    console.error(error);
+  }
+  ```
+
+  **Good:**
+  ```tsx
+  const user = await getUser();
+  if (!user) redirect('/login');
+  
+  // Or rethrow redirect errors
+  try {
+    const user = await getUser();
+    if (!user) redirect('/login');
+  } catch (error) {
+    if (error.digest?.startsWith('NEXT_REDIRECT')) throw error;
+    console.error(error);
+  }
+  ```
+</Accordion>
+
+<Accordion title="nextjs-image-missing-sizes" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/nextjs-image-missing-sizes`
+
+  Requires `sizes` attribute on images with `fill` prop for responsive behavior.
+
+  **Bad:**
+  ```tsx
+  <Image src="/hero.jpg" alt="Hero" fill />
+  ```
+
+  **Good:**
+  ```tsx
+  <Image 
+    src="/hero.jpg" 
+    alt="Hero" 
+    fill 
+    sizes="(max-width: 768px) 100vw, 50vw"
+  />
+  ```
+</Accordion>
+
+<Accordion title="nextjs-no-native-script" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/nextjs-no-native-script`
+
+  Requires using `next/script` instead of plain `<script>` for loading strategy optimization.
+
+  **Bad:**
+  ```tsx
+  <script src="https://example.com/analytics.js" />
+  ```
+
+  **Good:**
+  ```tsx
+  import Script from 'next/script';
+  
+  <Script 
+    src="https://example.com/analytics.js" 
+    strategy="afterInteractive"
+  />
+  ```
+</Accordion>
+
+<Accordion title="nextjs-inline-script-missing-id" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/nextjs-inline-script-missing-id`
+
+  Requires `id` attribute on inline `<Script>` components for Next.js tracking.
+
+  **Bad:**
+  ```tsx
+  <Script>{`console.log('inline')`}</Script>
+  ```
+
+  **Good:**
+  ```tsx
+  <Script id="inline-script">
+    {`console.log('inline')`}
+  </Script>
+  ```
+</Accordion>
+
+<Accordion title="nextjs-no-font-link" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/nextjs-no-font-link`
+
+  Requires using `next/font` instead of Google Fonts CDN for self-hosting and zero layout shift.
+
+  **Bad:**
+  ```tsx
+  <link href="https://fonts.googleapis.com/css2?family=Inter" rel="stylesheet" />
+  ```
+
+  **Good:**
+  ```tsx
+  import { Inter } from 'next/font/google';
+  
+  const inter = Inter({ subsets: ['latin'] });
+  
+  <body className={inter.className}>
+  ```
+</Accordion>
+
+<Accordion title="nextjs-no-css-link" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/nextjs-no-css-link`
+
+  Suggests importing CSS directly instead of using `<link>` tags for bundling and optimization.
+
+  **Bad:**
+  ```tsx
+  <link rel="stylesheet" href="/styles.css" />
+  ```
+
+  **Good:**
+  ```tsx
+  import './styles.css';
+  ```
+</Accordion>
+
+<Accordion title="nextjs-no-polyfill-script" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/nextjs-no-polyfill-script`
+
+  Next.js includes automatic polyfills for modern JavaScript features. External polyfill scripts are unnecessary.
+
+  **Bad:**
+  ```tsx
+  <script src="https://polyfill.io/v3/polyfill.min.js" />
+  ```
+
+  **Good:**
+  Remove the script - Next.js handles polyfills automatically.
+</Accordion>
+
+<Accordion title="nextjs-no-head-import" icon="circle-xmark">
+  **Severity:** error  
+  **Rule ID:** `react-doctor/nextjs-no-head-import`
+
+  `next/head` is not supported in the App Router. Use the Metadata API instead.
+
+  **Bad:**
+  ```tsx
+  import Head from 'next/head';
+  
+  <Head>
+    <title>Page Title</title>
+  </Head>
+  ```
+
+  **Good:**
+  ```tsx
+  export const metadata = {
+    title: 'Page Title',
+  };
+  ```
+</Accordion>
+
+<Accordion title="nextjs-no-side-effect-in-get-handler" icon="circle-xmark">
+  **Severity:** error  
+  **Rule ID:** `react-doctor/nextjs-no-side-effect-in-get-handler`
+
+  Prevents side effects in GET route handlers to prevent CSRF and unintended prefetch triggers.
+
+  **Why it's bad:**
+  - GET requests should be safe (no side effects)
+  - Next.js prefetches routes automatically
+  - CSRF attacks can trigger GET requests
+
+  **Bad:**
+  ```tsx
+  // app/api/logout/route.ts
+  export async function GET() {
+    await logout();
+    return Response.json({ ok: true });
+  }
+  ```
+
+  **Good:**
+  ```tsx
+  // Use POST for mutations
+  export async function POST() {
+    await logout();
+    return Response.json({ ok: true });
+  }
+  ```
+
+  Side effects detected:
+  - Database writes (insert, update, delete)
+  - User logout/signout in route path
+  - State mutations
+</Accordion>
+
+## Server vs Client Components
+
+Next.js App Router uses server components by default:
+
+```tsx
+// ✅ Server component (default)
+export default async function Page() {
+  const data = await fetch('/api/data');
+  return <UI data={data} />;
+}
+
+// ✅ Client component (when needed)
+'use client';
+export default function Page() {
+  const [count, setCount] = useState(0);
+  return <button onClick={() => setCount(c => c + 1)}>{count}</button>;
+}
+```
+
+### When to use client components:
+- Event handlers (onClick, onChange)
+- React hooks (useState, useEffect)
+- Browser APIs
+- Third-party interactive components
+
+### When to use server components:
+- Data fetching
+- Direct database access
+- Server-only code
+- Reducing bundle size
+
+## Related Rules
+
+- [Performance Rules](/rules/performance) - General React performance
+- [Bundle Size Rules](/rules/bundle-size) - Code splitting strategies
+- [Security Rules](/rules/security) - Security best practices

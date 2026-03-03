@@ -1,0 +1,230 @@
+---
+title: Performance Rules
+description: Rules for React rendering performance and smooth animations
+---
+
+These rules help you avoid common performance pitfalls in React applications, from unnecessary re-renders to expensive animations.
+
+## Rules
+
+<Accordion title="no-inline-prop-on-memo-component" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/no-inline-prop-on-memo-component`
+
+  Detects inline functions, objects, arrays, or JSX passed as props to components wrapped in `React.memo()`. These create new references every render, breaking memoization.
+
+  **Bad:**
+  ```tsx
+  const MemoChild = memo(Child);
+  
+  <MemoChild onClick={() => console.log('click')} />
+  <MemoChild config={{ enabled: true }} />
+  ```
+
+  **Good:**
+  ```tsx
+  const handleClick = useCallback(() => console.log('click'), []);
+  const config = useMemo(() => ({ enabled: true }), []);
+  
+  <MemoChild onClick={handleClick} config={config} />
+  ```
+</Accordion>
+
+<Accordion title="no-usememo-simple-expression" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/no-usememo-simple-expression`
+
+  Flags `useMemo` wrapping trivially cheap expressions. The overhead of `useMemo` (function call, dependency comparison) exceeds the computation cost.
+
+  **Bad:**
+  ```tsx
+  const doubled = useMemo(() => count * 2, [count]);
+  const fullName = useMemo(() => `${first} ${last}`, [first, last]);
+  ```
+
+  **Good:**
+  ```tsx
+  const doubled = count * 2; // Just compute it
+  const fullName = `${first} ${last}`;
+  ```
+</Accordion>
+
+<Accordion title="no-layout-property-animation" icon="circle-xmark">
+  **Severity:** error  
+  **Rule ID:** `react-doctor/no-layout-property-animation`
+
+  Prevents animating CSS properties that trigger layout recalculation: `width`, `height`, `top`, `left`, `padding`, `margin`, etc. These cause expensive reflows on every frame.
+
+  **Bad:**
+  ```tsx
+  <motion.div animate={{ width: 300, height: 200 }} />
+  ```
+
+  **Good:**
+  ```tsx
+  // Use transform for animations
+  <motion.div animate={{ scale: 1.5 }} />
+  
+  // Or framer-motion's layout animations
+  <motion.div layout animate={{ opacity: 1 }} />
+  ```
+
+  Layout properties detected: width, height, top, left, right, bottom, padding, margin, border, fontSize, lineHeight, gap.
+</Accordion>
+
+<Accordion title="no-transition-all" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/no-transition-all`
+
+  Flags `transition: "all"` which animates every property including expensive layout properties.
+
+  **Bad:**
+  ```tsx
+  <div style={{ transition: 'all 0.3s' }} />
+  ```
+
+  **Good:**
+  ```tsx
+  <div style={{ transition: 'opacity 0.3s, transform 0.3s' }} />
+  ```
+</Accordion>
+
+<Accordion title="no-global-css-variable-animation" icon="circle-xmark">
+  **Severity:** error  
+  **Rule ID:** `react-doctor/no-global-css-variable-animation`
+
+  Prevents updating CSS variables in `requestAnimationFrame` or `setInterval`. This forces style recalculation on all inheriting elements every frame.
+
+  **Bad:**
+  ```tsx
+  requestAnimationFrame(() => {
+    element.style.setProperty('--color', newColor);
+  });
+  ```
+
+  **Good:**
+  ```tsx
+  // Use scoped CSS variables or transform
+  requestAnimationFrame(() => {
+    element.style.transform = `translateX(${x}px)`;
+  });
+  ```
+</Accordion>
+
+<Accordion title="no-large-animated-blur" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/no-large-animated-blur`
+
+  Warns on `blur()` filters over 10px. Blur is GPU-intensive and cost escalates with radius and layer size. Can exceed GPU memory on mobile.
+
+  **Bad:**
+  ```tsx
+  <motion.div animate={{ filter: 'blur(50px)' }} />
+  ```
+
+  **Good:**
+  ```tsx
+  // Use smaller blur values
+  <motion.div animate={{ filter: 'blur(8px)' }} />
+  ```
+</Accordion>
+
+<Accordion title="no-scale-from-zero" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/no-scale-from-zero`
+
+  Suggests using `scale: 0.95` with `opacity: 0` instead of `scale: 0` for more natural entrance animations.
+
+  **Bad:**
+  ```tsx
+  <motion.div initial={{ scale: 0 }} />
+  ```
+
+  **Good:**
+  ```tsx
+  <motion.div initial={{ scale: 0.95, opacity: 0 }} />
+  ```
+</Accordion>
+
+<Accordion title="no-permanent-will-change" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/no-permanent-will-change`
+
+  Detects permanent `will-change` declarations. `will-change` wastes GPU memory and should only be applied during active animations.
+
+  **Bad:**
+  ```tsx
+  <div style={{ willChange: 'transform' }} />
+  ```
+
+  **Good:**
+  ```tsx
+  // Apply dynamically during animation
+  const style = isAnimating ? { willChange: 'transform' } : {};
+  ```
+</Accordion>
+
+<Accordion title="rerender-memo-with-default-value" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/rerender-memo-with-default-value`
+
+  Catches default prop values `{}` or `[]` in destructured props. These create new references every render.
+
+  **Bad:**
+  ```tsx
+  function Component({ config = {} }) {
+    // New object every render!
+  }
+  ```
+
+  **Good:**
+  ```tsx
+  const DEFAULT_CONFIG = {}; // Module-level constant
+  
+  function Component({ config = DEFAULT_CONFIG }) {
+    // Same reference every render
+  }
+  ```
+</Accordion>
+
+<Accordion title="rendering-hydration-no-flicker" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/rendering-hydration-no-flicker`
+
+  Prevents `useEffect(() => setState(...), [])` pattern that causes a flash during hydration. The effect runs after the initial render, causing a second render.
+
+  **Bad:**
+  ```tsx
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  ```
+
+  **Good:**
+  ```tsx
+  // Use useSyncExternalStore for client-only state
+  const isMounted = useSyncExternalStore(
+    subscribe,
+    () => true,
+    () => false
+  );
+  
+  // Or suppressHydrationWarning for date/time
+  <time suppressHydrationWarning>{new Date().toLocaleDateString()}</time>
+  ```
+</Accordion>
+
+## JavaScript Performance Rules
+
+React Doctor also includes general JavaScript performance rules:
+
+- `react-doctor/async-parallel` - Use Promise.all() for independent async operations
+- `react-doctor/js-combine-iterations` - Combine chained map/filter calls
+- `react-doctor/js-tosorted-immutable` - Use toSorted() instead of [...arr].sort()
+- `react-doctor/js-hoist-regexp` - Hoist RegExp out of loops
+- `react-doctor/js-set-map-lookups` - Use Set/Map for O(1) lookups in loops
+
+## Related Rules
+
+- [State and Effects Rules](/rules/state-and-effects) - State management rules
+- [Architecture Rules](/rules/architecture) - Component structure rules

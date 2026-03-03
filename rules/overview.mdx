@@ -1,0 +1,133 @@
+---
+title: Rules Reference
+description: Complete reference of all React Doctor linting rules organized by category
+---
+
+React Doctor includes **60+ specialized rules** across 10 categories to catch React performance issues, architectural problems, and framework-specific bugs.
+
+## Rule Categories
+
+<CardGroup cols={2}>
+  <Card title="State and Effects" icon="arrows-rotate" href="/rules/state-and-effects">
+    9 rules for proper state management and effect usage
+  </Card>
+  <Card title="Performance" icon="gauge-high" href="/rules/performance">
+    10 rules for React rendering and animation performance
+  </Card>
+  <Card title="Architecture" icon="sitemap" href="/rules/architecture">
+    4 rules for component structure and code organization
+  </Card>
+  <Card title="Bundle Size" icon="box" href="/rules/bundle-size">
+    6 rules for reducing JavaScript bundle size
+  </Card>
+  <Card title="Security" icon="shield" href="/rules/security">
+    2 rules for preventing security vulnerabilities
+  </Card>
+  <Card title="Correctness" icon="check" href="/rules/correctness">
+    3 rules for common React mistakes and bugs
+  </Card>
+  <Card title="Accessibility" icon="universal-access" href="/rules/accessibility">
+    15 rules from jsx-a11y for accessible UIs
+  </Card>
+  <Card title="Next.js" icon="N" href="/rules/nextjs">
+    16 Next.js-specific optimization and correctness rules
+  </Card>
+  <Card title="React Native" icon="mobile" href="/rules/react-native">
+    8 React Native and Expo best practices
+  </Card>
+  <Card title="Dead Code" icon="trash" href="/rules/dead-code">
+    Unused files, exports, types via Knip integration
+  </Card>
+</CardGroup>
+
+## All Rules by Category
+
+### State and Effects (9 rules)
+
+| Rule | Severity | Description |
+|------|----------|-------------|
+| `react-doctor/no-derived-state-effect` | error | Detects state derived from props in useEffect |
+| `react-doctor/no-fetch-in-effect` | error | Prevents fetch() inside useEffect |
+| `react-doctor/no-cascading-set-state` | warn | Flags 3+ setState calls in one effect |
+| `react-doctor/no-effect-event-handler` | warn | Detects useEffect simulating event handlers |
+| `react-doctor/no-derived-useState` | warn | Catches useState initialized from props |
+| `react-doctor/prefer-useReducer` | warn | Suggests useReducer for 5+ related useState calls |
+| `react-doctor/rerender-lazy-state-init` | warn | Enforces lazy initialization for expensive computations |
+| `react-doctor/rerender-functional-setstate` | warn | Requires functional updates to avoid stale closures |
+| `react-doctor/rerender-dependencies` | error | Catches new object/array references in dependency arrays |
+
+### Performance (10 rules)
+
+| Rule | Severity | Description |
+|------|----------|-------------|
+| `react-doctor/no-inline-prop-on-memo-component` | warn | Prevents inline props breaking memo() |
+| `react-doctor/no-usememo-simple-expression` | warn | Flags useMemo wrapping trivial expressions |
+| `react-doctor/no-layout-property-animation` | error | Prevents animating layout-triggering properties |
+| `react-doctor/no-transition-all` | warn | Flags transition: "all" for performance |
+| `react-doctor/no-global-css-variable-animation` | error | Prevents animating global CSS variables |
+| `react-doctor/no-large-animated-blur` | warn | Warns on expensive blur() animations |
+| `react-doctor/no-scale-from-zero` | warn | Suggests better scale animations |
+| `react-doctor/no-permanent-will-change` | warn | Detects permanent will-change declarations |
+| `react-doctor/rerender-memo-with-default-value` | warn | Catches {} and [] default props on memoized components |
+| `react-doctor/rendering-hydration-no-flicker` | warn | Prevents mount-time setState causing flicker |
+
+### Architecture (4 rules)
+
+| Rule | Severity | Description |
+|------|----------|-------------|
+| `react-doctor/no-generic-handler-names` | warn | Requires descriptive event handler names |
+| `react-doctor/no-giant-component` | warn | Flags components over 300 lines |
+| `react-doctor/no-render-in-render` | warn | Prevents inline render function calls |
+| `react-doctor/no-nested-component-definition` | error | Detects components defined inside other components |
+
+### Bundle Size (6 rules)
+
+| Rule | Severity | Description |
+|------|----------|-------------|
+| `react-doctor/no-barrel-import` | warn | Suggests direct imports over barrel files |
+| `react-doctor/no-full-lodash-import` | warn | Requires importing specific lodash functions |
+| `react-doctor/no-moment` | warn | Suggests date-fns or dayjs instead of moment |
+| `react-doctor/prefer-dynamic-import` | warn | Recommends code splitting for heavy libraries |
+| `react-doctor/use-lazy-motion` | warn | Enforces LazyMotion for framer-motion |
+| `react-doctor/no-undeferred-third-party` | warn | Requires defer/async on third-party scripts |
+
+### Security (2 rules)
+
+| Rule | Severity | Description |
+|------|----------|-------------|
+| `react-doctor/no-eval` | error | Prevents eval() and dynamic code execution |
+| `react-doctor/no-secrets-in-client-code` | error | Detects hardcoded secrets and API keys |
+
+### Correctness (3 rules)
+
+| Rule | Severity | Description |
+|------|----------|-------------|
+| `react-doctor/no-array-index-as-key` | warn | Prevents using array index as key prop |
+| `react-doctor/no-prevent-default` | warn | Suggests semantic HTML over preventDefault |
+| `react-doctor/rendering-conditional-render` | warn | Catches .length in conditional rendering |
+
+### Accessibility (15 rules)
+
+All jsx-a11y rules from the oxlint plugin for accessible interfaces.
+
+### Next.js (16 rules)
+
+Next.js-specific optimization and App Router best practices.
+
+### React Native (8 rules)
+
+React Native and Expo platform-specific rules.
+
+### Dead Code (4 categories)
+
+Knip integration for detecting unused files, exports, types, and duplicates.
+
+## Rule Severity Levels
+
+- **error**: Must be fixed, indicates a bug or serious issue
+- **warn**: Should be reviewed, indicates a performance or maintainability concern
+
+## Related
+
+- [Configuration Guide](/usage/configuration) - Learn how to customize which rules run
+- [CLI Commands](/usage/cli-commands) - How to use command line options

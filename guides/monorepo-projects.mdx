@@ -1,0 +1,354 @@
+---
+title: Monorepo Projects
+description: Using React Doctor in monorepos with multiple workspaces
+---
+
+React Doctor automatically detects monorepo workspaces and lets you scan individual projects or all at once.
+
+## Automatic Workspace Detection
+
+When you run React Doctor in a monorepo root, it detects workspaces from:
+
+- `package.json` with `workspaces` field (npm, Yarn, pnpm)
+- `pnpm-workspace.yaml` (pnpm)
+- `lerna.json` (Lerna)
+
+React Doctor prompts you to select which projects to scan:
+
+```bash
+npx react-doctor .
+```
+
+<Info>
+  React Doctor only shows workspaces that contain React dependencies.
+</Info>
+
+## Selecting a Single Project
+
+Use the `--project` flag to scan a specific workspace:
+
+```bash
+npx react-doctor . --project web
+```
+
+This scans only the `web` project and skips others.
+
+### Finding Project Names
+
+Project names come from `package.json` name field:
+
+```json packages/web/package.json
+{
+  "name": "@myorg/web",
+  "version": "1.0.0"
+}
+```
+
+Use the full package name:
+
+```bash
+npx react-doctor . --project @myorg/web
+```
+
+## Scanning Multiple Projects
+
+Scan several projects by passing comma-separated names:
+
+```bash
+npx react-doctor . --project web,mobile
+```
+
+Or with full package names:
+
+```bash
+npx react-doctor . --project @myorg/web,@myorg/mobile
+```
+
+<Steps>
+  <Step title="React Doctor detects workspaces">
+    Finds all projects with React dependencies
+  </Step>
+  
+  <Step title="Scans each project sequentially">
+    Runs lint + dead code checks for each specified project
+  </Step>
+  
+  <Step title="Combines diagnostics">
+    Aggregates all issues into a single report
+  </Step>
+  
+  <Step title="Calculates overall score">
+    Produces one score based on all projects combined
+  </Step>
+</Steps>
+
+## Scanning All Projects
+
+Use the `-y` flag to skip prompts and scan all React projects:
+
+```bash
+npx react-doctor . -y
+```
+
+This scans every workspace that contains React, useful for CI/CD.
+
+<Warning>
+  Scanning all projects in large monorepos can take several minutes. Use `--project` to scan specific projects for faster feedback.
+</Warning>
+
+## Monorepo Configuration
+
+Place `react-doctor.config.json` at the monorepo root:
+
+```json react-doctor.config.json
+{
+  "ignore": {
+    "rules": ["react/no-danger"],
+    "files": ["**/generated/**"]
+  }
+}
+```
+
+This config applies to **all projects** in the monorepo.
+
+### Per-Project Configuration
+
+You can also create project-specific configs:
+
+```json packages/web/react-doctor.config.json
+{
+  "ignore": {
+    "rules": ["jsx-a11y/no-autofocus"]
+  }
+}
+```
+
+React Doctor merges configurations:
+
+1. **Root config** - Applied to all projects
+2. **Project config** - Overrides root for that project
+
+<Tip>
+  Put shared rules in the root config and project-specific exceptions in individual configs.
+</Tip>
+
+## Example: Turborepo
+
+Typical Turborepo structure:
+
+```
+my-monorepo/
+├── apps/
+│   ├── web/         (Next.js)
+│   └── mobile/      (React Native)
+├── packages/
+│   ├── ui/          (Shared components)
+│   └── config/      (Not React)
+└── package.json
+```
+
+### Scan All React Apps
+
+```bash
+npx react-doctor . -y
+```
+
+Scans `web`, `mobile`, and `ui` (skips `config`).
+
+### Scan Only Web App
+
+```bash
+npx react-doctor . --project web
+```
+
+### Scan Web + Mobile
+
+```bash
+npx react-doctor . --project web,mobile
+```
+
+## Example: Yarn Workspaces
+
+Typical Yarn workspaces setup:
+
+```json package.json
+{
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ]
+}
+```
+
+React Doctor scans all matching workspaces:
+
+```bash
+npx react-doctor . -y
+```
+
+## Example: pnpm Workspaces
+
+With `pnpm-workspace.yaml`:
+
+```yaml pnpm-workspace.yaml
+packages:
+  - 'packages/*'
+  - 'apps/*'
+```
+
+Scan specific project:
+
+```bash
+npx react-doctor . --project @myorg/dashboard
+```
+
+## Monorepo + Diff Mode
+
+Combine `--project` and `--diff` to scan only changed files in a specific project:
+
+```bash
+npx react-doctor . --project web --diff
+```
+
+This is extremely fast and useful for pre-commit hooks:
+
+<Steps>
+  <Step title="Detect changed files">
+    Git diff identifies modified source files
+  </Step>
+  
+  <Step title="Filter to project">
+    Only include files in the `web` project
+  </Step>
+  
+  <Step title="Run checks">
+    Scan only those changed files
+  </Step>
+</Steps>
+
+<Tip>
+  Use `--project` with `--diff` in CI to check only the affected project in a PR.
+</Tip>
+
+## Monorepo CI/CD Example
+
+GitHub Actions workflow for monorepos:
+
+```yaml .github/workflows/react-doctor.yml
+name: React Doctor
+
+on:
+  pull_request:
+    paths:
+      - 'apps/web/**'
+      - 'packages/**'
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      
+      - uses: millionco/react-doctor@main
+        with:
+          project: web
+          diff: main
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+This scans only the `web` project and only changed files.
+
+## Troubleshooting Monorepos
+
+### No Workspaces Detected
+
+If React Doctor doesn't find workspaces:
+
+1. **Check workspace config** - Verify `package.json` or `pnpm-workspace.yaml`
+2. **Run from root** - Navigate to monorepo root, not a subdirectory
+3. **Install dependencies** - Run `npm install` or `pnpm install` first
+
+### Project Not Found
+
+If `--project` fails:
+
+```bash
+# List all workspaces
+npx react-doctor .
+# Interactive prompt shows available project names
+```
+
+Use the exact name from the prompt.
+
+### Scanning Takes Too Long
+
+For large monorepos:
+
+- Use `--project` to scan specific projects
+- Use `--diff` to scan only changes
+- Combine both for maximum speed
+
+```bash
+npx react-doctor . --project web --diff
+```
+
+### Inconsistent Scores
+
+If scores vary between projects:
+
+- Each project is scanned independently
+- The final score combines all diagnostics
+- Projects with more issues weigh down the overall score
+
+Consider scanning projects separately to track individual health:
+
+```bash
+npx react-doctor . --project web --score
+npx react-doctor . --project mobile --score
+```
+
+## Best Practices for Monorepos
+
+### 1. Scan Changed Projects Only in CI
+
+Use path filters to trigger scans only when relevant projects change:
+
+```yaml
+on:
+  pull_request:
+    paths:
+      - 'apps/web/**'
+```
+
+### 2. Create Root Configuration
+
+Define shared rules at the monorepo root:
+
+```json react-doctor.config.json
+{
+  "ignore": {
+    "rules": ["knip/types"],
+    "files": ["**/*.generated.ts"]
+  }
+}
+```
+
+### 3. Use Project-Specific Configs Sparingly
+
+Only override rules when absolutely necessary. Too many exceptions make the codebase inconsistent.
+
+### 4. Track Scores Per Project
+
+Run separate scans to monitor each project's health:
+
+```bash
+npx react-doctor . --project web --score > scores/web.txt
+npx react-doctor . --project mobile --score > scores/mobile.txt
+```
+
+<Info>
+  React Doctor treats each workspace as an independent project. The overall score reflects the combined health of all scanned projects.
+</Info>

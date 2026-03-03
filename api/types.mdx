@@ -1,0 +1,451 @@
+---
+title: TypeScript Types
+description: Complete TypeScript type definitions for React Doctor
+---
+
+## Core Types
+
+### Diagnostic
+
+Represents a single diagnostic issue found in the codebase.
+
+```typescript
+export interface Diagnostic {
+  filePath: string;
+  plugin: string;
+  rule: string;
+  severity: "error" | "warning";
+  message: string;
+  help: string;
+  line: number;
+  column: number;
+  category: string;
+  weight?: number;
+}
+```
+
+<ResponseField name="filePath" type="string">
+  Absolute path to the file containing the issue.
+</ResponseField>
+
+<ResponseField name="plugin" type="string">
+  Source of the diagnostic (e.g., `"oxlint"`, `"knip"`).
+</ResponseField>
+
+<ResponseField name="rule" type="string">
+  Specific rule that was violated (e.g., `"react-hooks/exhaustive-deps"`).
+</ResponseField>
+
+<ResponseField name="severity" type="'error' | 'warning'">
+  Severity level of the issue.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable description of the issue.
+</ResponseField>
+
+<ResponseField name="help" type="string">
+  Additional context or guidance for fixing the issue.
+</ResponseField>
+
+<ResponseField name="line" type="number">
+  Line number where the issue occurs (1-indexed).
+</ResponseField>
+
+<ResponseField name="column" type="number">
+  Column number where the issue occurs (1-indexed).
+</ResponseField>
+
+<ResponseField name="category" type="string">
+  Categorization of the issue (e.g., `"correctness"`, `"style"`, `"performance"`).
+</ResponseField>
+
+<ResponseField name="weight" type="number" optional>
+  Numeric weight for score calculation. Higher weights have more impact on the score.
+</ResponseField>
+
+### ProjectInfo
+
+Information about the analyzed React project.
+
+```typescript
+export interface ProjectInfo {
+  rootDirectory: string;
+  projectName: string;
+  reactVersion: string | null;
+  framework: Framework;
+  hasTypeScript: boolean;
+  hasReactCompiler: boolean;
+  sourceFileCount: number;
+}
+```
+
+<ResponseField name="rootDirectory" type="string">
+  Absolute path to the project root directory.
+</ResponseField>
+
+<ResponseField name="projectName" type="string">
+  Name of the project from `package.json`.
+</ResponseField>
+
+<ResponseField name="reactVersion" type="string | null">
+  Version of React installed, or `null` if not found.
+</ResponseField>
+
+<ResponseField name="framework" type="Framework">
+  Detected framework. See [Framework type](#framework).
+</ResponseField>
+
+<ResponseField name="hasTypeScript" type="boolean">
+  Whether TypeScript is detected in the project.
+</ResponseField>
+
+<ResponseField name="hasReactCompiler" type="boolean">
+  Whether React Compiler (`babel-plugin-react-compiler`) is detected.
+</ResponseField>
+
+<ResponseField name="sourceFileCount" type="number">
+  Total number of source files in the project.
+</ResponseField>
+
+### ScoreResult
+
+Overall health score for the codebase.
+
+```typescript
+export interface ScoreResult {
+  score: number;
+  label: string;
+}
+```
+
+<ResponseField name="score" type="number">
+  Numeric score from 0-100, where 100 is perfect health.
+</ResponseField>
+
+<ResponseField name="label" type="string">
+  Human-readable label for the score (e.g., `"Excellent"`, `"Good"`, `"Fair"`, `"Poor"`).
+</ResponseField>
+
+### DiffInfo
+
+Information about changed files in a git repository.
+
+```typescript
+export interface DiffInfo {
+  currentBranch: string;
+  baseBranch: string;
+  changedFiles: string[];
+  isCurrentChanges?: boolean;
+}
+```
+
+<ResponseField name="currentBranch" type="string">
+  Name of the current git branch.
+</ResponseField>
+
+<ResponseField name="baseBranch" type="string">
+  Name of the base branch for comparison.
+</ResponseField>
+
+<ResponseField name="changedFiles" type="string[]">
+  Array of file paths that have changed.
+</ResponseField>
+
+<ResponseField name="isCurrentChanges" type="boolean" optional>
+  Whether the changes are uncommitted (working directory changes).
+</ResponseField>
+
+### ReactDoctorConfig
+
+Configuration object from `react-doctor.config.json`.
+
+```typescript
+export interface ReactDoctorConfig {
+  ignore?: ReactDoctorIgnoreConfig;
+  lint?: boolean;
+  deadCode?: boolean;
+  verbose?: boolean;
+  diff?: boolean | string;
+  failOn?: FailOnLevel;
+}
+```
+
+<ResponseField name="ignore" type="ReactDoctorIgnoreConfig" optional>
+  Rules and files to ignore. See [ReactDoctorIgnoreConfig](#reactdoctorignoreconfig).
+</ResponseField>
+
+<ResponseField name="lint" type="boolean" optional>
+  Enable linting checks.
+</ResponseField>
+
+<ResponseField name="deadCode" type="boolean" optional>
+  Enable dead code detection.
+</ResponseField>
+
+<ResponseField name="verbose" type="boolean" optional>
+  Show verbose output with file details.
+</ResponseField>
+
+<ResponseField name="diff" type="boolean | string" optional>
+  Enable diff mode. If a string, specifies the base branch name.
+</ResponseField>
+
+<ResponseField name="failOn" type="FailOnLevel" optional>
+  Exit code behavior. See [FailOnLevel](#failonlevel).
+</ResponseField>
+
+### ReactDoctorIgnoreConfig
+
+Configuration for ignoring specific rules or files.
+
+```typescript
+export interface ReactDoctorIgnoreConfig {
+  rules?: string[];
+  files?: string[];
+}
+```
+
+<ResponseField name="rules" type="string[]" optional>
+  Array of rule IDs to ignore (e.g., `["react-hooks/exhaustive-deps"]`).
+</ResponseField>
+
+<ResponseField name="files" type="string[]" optional>
+  Array of file glob patterns to ignore (e.g., `["**/*.test.tsx"]`).
+</ResponseField>
+
+## Enums & Unions
+
+### Framework
+
+Supported React frameworks.
+
+```typescript
+export type Framework =
+  | "nextjs"
+  | "vite"
+  | "cra"
+  | "remix"
+  | "gatsby"
+  | "expo"
+  | "react-native"
+  | "unknown";
+```
+
+<ResponseField name="nextjs" type="Framework">
+  Next.js framework
+</ResponseField>
+
+<ResponseField name="vite" type="Framework">
+  Vite framework
+</ResponseField>
+
+<ResponseField name="cra" type="Framework">
+  Create React App
+</ResponseField>
+
+<ResponseField name="remix" type="Framework">
+  Remix framework
+</ResponseField>
+
+<ResponseField name="gatsby" type="Framework">
+  Gatsby framework
+</ResponseField>
+
+<ResponseField name="expo" type="Framework">
+  Expo framework
+</ResponseField>
+
+<ResponseField name="react-native" type="Framework">
+  React Native (non-Expo)
+</ResponseField>
+
+<ResponseField name="unknown" type="Framework">
+  Framework could not be detected
+</ResponseField>
+
+### FailOnLevel
+
+Exit code behavior based on diagnostic severity.
+
+```typescript
+export type FailOnLevel = "error" | "warning" | "none";
+```
+
+<ResponseField name="error" type="FailOnLevel">
+  Exit with code 1 only if errors are found.
+</ResponseField>
+
+<ResponseField name="warning" type="FailOnLevel">
+  Exit with code 1 if any warnings or errors are found.
+</ResponseField>
+
+<ResponseField name="none" type="FailOnLevel">
+  Always exit with code 0 regardless of diagnostics.
+</ResponseField>
+
+## Internal Types
+
+These types are used internally by React Doctor but may be useful for advanced use cases.
+
+### EstimatedScoreResult
+
+Estimated score improvement after fixing issues.
+
+```typescript
+export interface EstimatedScoreResult {
+  currentScore: number;
+  currentLabel: string;
+  estimatedScore: number;
+  estimatedLabel: string;
+}
+```
+
+### ScanOptions
+
+Internal options used by the CLI scanner.
+
+```typescript
+export interface ScanOptions {
+  lint?: boolean;
+  deadCode?: boolean;
+  verbose?: boolean;
+  scoreOnly?: boolean;
+  offline?: boolean;
+  includePaths?: string[];
+}
+```
+
+### ScanResult
+
+Internal result from the scanner.
+
+```typescript
+export interface ScanResult {
+  diagnostics: Diagnostic[];
+  scoreResult: ScoreResult | null;
+  skippedChecks: string[];
+}
+```
+
+### PackageJson
+
+Structure of a `package.json` file.
+
+```typescript
+export interface PackageJson {
+  name?: string;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+  workspaces?: string[] | { packages: string[] };
+}
+```
+
+### WorkspacePackage
+
+Information about a workspace package in a monorepo.
+
+```typescript
+export interface WorkspacePackage {
+  name: string;
+  directory: string;
+}
+```
+
+## Utility Functions
+
+### getDiffInfo()
+
+Returns information about changed files in a git repository.
+
+```typescript
+export function getDiffInfo(
+  directory: string,
+  baseBranch?: string
+): DiffInfo | null
+```
+
+<ParamField path="directory" type="string" required>
+  Path to the git repository.
+</ParamField>
+
+<ParamField path="baseBranch" type="string" optional>
+  Base branch for comparison. If not provided, uses the default base branch (usually `main` or `master`).
+</ParamField>
+
+**Returns:** `DiffInfo | null` - Diff information or `null` if not a git repository or no changes found.
+
+### filterSourceFiles()
+
+Filters an array of file paths to include only source files.
+
+```typescript
+export function filterSourceFiles(files: string[]): string[]
+```
+
+<ParamField path="files" type="string[]" required>
+  Array of file paths to filter.
+</ParamField>
+
+**Returns:** `string[]` - Array containing only source files (JavaScript, TypeScript, JSX, TSX).
+
+## Examples
+
+### Type-safe diagnostic handling
+
+```typescript
+import type { Diagnostic } from 'react-doctor';
+
+function groupDiagnosticsBySeverity(diagnostics: Diagnostic[]) {
+  const errors = diagnostics.filter(d => d.severity === 'error');
+  const warnings = diagnostics.filter(d => d.severity === 'warning');
+  
+  return { errors, warnings };
+}
+```
+
+### Custom score display
+
+```typescript
+import type { ScoreResult } from 'react-doctor';
+
+function formatScore(score: ScoreResult | null): string {
+  if (!score) return 'N/A';
+  
+  const emoji = score.score >= 90 ? '🟢' :
+                score.score >= 70 ? '🟡' :
+                score.score >= 50 ? '🟠' : '🔴';
+  
+  return `${emoji} ${score.score}/100 (${score.label})`;
+}
+```
+
+### Working with project info
+
+```typescript
+import type { ProjectInfo, Framework } from 'react-doctor';
+
+function getFrameworkDisplayName(framework: Framework): string {
+  const names: Record<Framework, string> = {
+    nextjs: 'Next.js',
+    vite: 'Vite',
+    cra: 'Create React App',
+    remix: 'Remix',
+    gatsby: 'Gatsby',
+    expo: 'Expo',
+    'react-native': 'React Native',
+    unknown: 'Unknown',
+  };
+  
+  return names[framework];
+}
+
+function displayProjectInfo(project: ProjectInfo) {
+  console.log(`Project: ${project.projectName}`);
+  console.log(`Framework: ${getFrameworkDisplayName(project.framework)}`);
+  console.log(`React: ${project.reactVersion || 'Not found'}`);
+  console.log(`TypeScript: ${project.hasTypeScript ? 'Yes' : 'No'}`);
+  console.log(`Files: ${project.sourceFileCount}`);
+}
+```

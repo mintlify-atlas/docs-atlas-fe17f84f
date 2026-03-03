@@ -1,0 +1,383 @@
+---
+title: CI/CD Integration
+description: Integrate React Doctor into your continuous integration pipeline
+---
+
+## GitHub Actions
+
+### Basic Setup
+
+Add React Doctor to your workflow:
+
+```yaml .github/workflows/react-doctor.yml
+name: React Doctor
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # Required for --diff mode
+
+      - uses: millionco/react-doctor@main
+        with:
+          verbose: true
+          fail-on: error
+```
+
+### Diff Mode (PR Only)
+
+Scan only changed files in pull requests:
+
+```yaml .github/workflows/react-doctor.yml
+name: React Doctor
+
+on:
+  pull_request:
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: millionco/react-doctor@main
+        with:
+          diff: main
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on: error
+```
+
+<Note>
+  Setting `github-token` automatically posts scan results as a PR comment
+</Note>
+
+### Monorepo Workflow
+
+Scan specific workspace projects:
+
+```yaml .github/workflows/react-doctor.yml
+name: React Doctor
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: millionco/react-doctor@main
+        with:
+          project: web,admin,mobile
+          verbose: true
+          fail-on: warning
+```
+
+### Use Score in Next Steps
+
+Access the health score in subsequent workflow steps:
+
+```yaml .github/workflows/react-doctor.yml
+name: React Doctor
+
+on:
+  pull_request:
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: millionco/react-doctor@main
+        id: doctor
+        with:
+          verbose: true
+
+      - name: Check Score
+        run: |
+          echo "Health Score: ${{ steps.doctor.outputs.score }}"
+          if [ "${{ steps.doctor.outputs.score }}" -lt 70 ]; then
+            echo "::warning::Health score is below 70"
+          fi
+
+      - name: Post to Slack
+        if: always()
+        run: |
+          curl -X POST ${{ secrets.SLACK_WEBHOOK }} \
+            -H 'Content-Type: application/json' \
+            -d '{"text":"React Doctor Score: ${{ steps.doctor.outputs.score }}"}'
+```
+
+### Matrix Strategy for Multiple Projects
+
+Run parallel jobs for different workspace projects:
+
+```yaml .github/workflows/react-doctor.yml
+name: React Doctor
+
+on:
+  pull_request:
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        project: [web, admin, mobile]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: millionco/react-doctor@main
+        with:
+          project: ${{ matrix.project }}
+          verbose: true
+          fail-on: error
+```
+
+## GitLab CI
+
+### Basic Pipeline
+
+```yaml .gitlab-ci.yml
+react-doctor:
+  image: node:20
+  stage: test
+  script:
+    - npx -y react-doctor@latest . --verbose --fail-on error
+  only:
+    - merge_requests
+    - main
+```
+
+### With Diff Mode
+
+```yaml .gitlab-ci.yml
+react-doctor:
+  image: node:20
+  stage: test
+  script:
+    - git fetch origin main
+    - npx -y react-doctor@latest . --diff origin/main --verbose --fail-on error
+  only:
+    - merge_requests
+```
+
+### Store Score as Artifact
+
+```yaml .gitlab-ci.yml
+react-doctor:
+  image: node:20
+  stage: test
+  script:
+    - npx -y react-doctor@latest . --score > score.txt
+    - cat score.txt
+    - npx -y react-doctor@latest . --verbose --fail-on warning
+  artifacts:
+    reports:
+      metrics: score.txt
+    paths:
+      - score.txt
+    expire_in: 30 days
+  only:
+    - merge_requests
+    - main
+```
+
+## CircleCI
+
+### Basic Config
+
+```yaml .circleci/config.yml
+version: 2.1
+
+jobs:
+  react-doctor:
+    docker:
+      - image: cimg/node:20.0
+    steps:
+      - checkout
+      - run:
+          name: Run React Doctor
+          command: npx -y react-doctor@latest . --verbose --fail-on error
+
+workflows:
+  analyze:
+    jobs:
+      - react-doctor
+```
+
+### With Caching
+
+```yaml .circleci/config.yml
+version: 2.1
+
+jobs:
+  react-doctor:
+    docker:
+      - image: cimg/node:20.0
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-deps-{{ checksum "package-lock.json" }}
+      - run:
+          name: Install dependencies
+          command: npm ci
+      - save_cache:
+          key: v1-deps-{{ checksum "package-lock.json" }}
+          paths:
+            - node_modules
+      - run:
+          name: Run React Doctor
+          command: npx -y react-doctor@latest . --verbose --fail-on error
+
+workflows:
+  version: 2
+  analyze:
+    jobs:
+      - react-doctor
+```
+
+## Jenkins
+
+### Declarative Pipeline
+
+```groovy Jenkinsfile
+pipeline {
+  agent {
+    docker {
+      image 'node:20'
+    }
+  }
+  
+  stages {
+    stage('React Doctor') {
+      steps {
+        sh 'npx -y react-doctor@latest . --verbose --fail-on error'
+      }
+    }
+  }
+}
+```
+
+### With Diff Mode
+
+```groovy Jenkinsfile
+pipeline {
+  agent {
+    docker {
+      image 'node:20'
+    }
+  }
+  
+  stages {
+    stage('React Doctor') {
+      steps {
+        script {
+          if (env.CHANGE_ID) {
+            // Pull request - scan only changed files
+            sh 'npx -y react-doctor@latest . --diff origin/main --verbose --fail-on error'
+          } else {
+            // Main branch - full scan
+            sh 'npx -y react-doctor@latest . --verbose --fail-on error'
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## Bitbucket Pipelines
+
+```yaml bitbucket-pipelines.yml
+image: node:20
+
+pipelines:
+  pull-requests:
+    '**':
+      - step:
+          name: React Doctor
+          script:
+            - npx -y react-doctor@latest . --verbose --fail-on error
+  
+  branches:
+    main:
+      - step:
+          name: React Doctor
+          script:
+            - npx -y react-doctor@latest . --score > score.txt
+            - cat score.txt
+            - npx -y react-doctor@latest . --verbose --fail-on warning
+          artifacts:
+            - score.txt
+```
+
+## Fail-On Levels
+
+Control when CI should fail based on diagnostic severity:
+
+<CodeGroup>
+```yaml Fail on errors only
+- uses: millionco/react-doctor@main
+  with:
+    fail-on: error  # Default in CI
+```
+
+```yaml Fail on warnings and errors
+- uses: millionco/react-doctor@main
+  with:
+    fail-on: warning
+```
+
+```yaml Never fail (report only)
+- uses: millionco/react-doctor@main
+  with:
+    fail-on: none
+```
+</CodeGroup>
+
+## Action Inputs Reference
+
+| Input          | Default | Description                                                       |
+| -------------- | ------- | ----------------------------------------------------------------- |
+| `directory`    | `.`     | Project directory to scan                                         |
+| `verbose`      | `true`  | Show file details per rule                                        |
+| `project`      |         | Workspace project(s) to scan (comma-separated)                    |
+| `diff`         |         | Base branch for diff mode. Only changed files are scanned         |
+| `github-token` |         | When set on `pull_request` events, posts findings as a PR comment |
+| `fail-on`      | `error` | Exit with error code on diagnostics: `error`, `warning`, `none`   |
+| `node-version` | `20`    | Node.js version to use                                            |
+
+## Tips
+
+<Tip>
+  Use `fail-on: warning` for stricter quality gates on main branches
+</Tip>
+
+<Tip>
+  Use `fail-on: none` during initial adoption to avoid blocking PRs
+</Tip>
+
+<Tip>
+  Always use `fetch-depth: 0` with `--diff` mode to access full git history
+</Tip>

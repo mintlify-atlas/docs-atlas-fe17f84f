@@ -1,0 +1,139 @@
+---
+title: 'Installation'
+description: 'Install React Doctor and start diagnosing your React codebase'
+---
+
+## No Installation Required
+
+The fastest way to use React Doctor is with `npx`. This runs the latest version without installing anything:
+
+```bash
+npx -y react-doctor@latest .
+```
+
+<Info>
+  The `-y` flag skips the confirmation prompt and ensures you always get the latest version.
+</Info>
+
+## Optional: Global Installation
+
+If you prefer to install React Doctor globally:
+
+```bash
+npm install -g react-doctor
+```
+
+Then run it from any project directory:
+
+```bash
+react-doctor .
+```
+
+<Warning>
+  Global installation may not always use the latest version. We recommend using `npx` for the most up-to-date features and fixes.
+</Warning>
+
+## System Requirements
+
+<CardGroup cols={2}>
+  <Card title="Node.js" icon="node-js">
+    Version 18 or higher required
+  </Card>
+  <Card title="React" icon="react">
+    Works with any React version
+  </Card>
+  <Card title="TypeScript" icon="code">
+    TypeScript 5.0.4 - 6.x supported
+  </Card>
+  <Card title="Frameworks" icon="layer-group">
+    Next.js, Vite, Remix, CRA, React Native, and more
+  </Card>
+</CardGroup>
+
+## Verify Installation
+
+Check that React Doctor is working correctly:
+
+```bash
+npx react-doctor@latest --version
+```
+
+<CodeGroup>
+```bash Output
+0.0.29
+```
+</CodeGroup>
+
+## For Coding Agents
+
+If you're using a coding agent (Cursor, Claude Code, OpenCode, Windsurf, etc.), install the React Doctor skill:
+
+```bash
+curl -fsSL https://react.doctor/install-skill.sh | bash
+```
+
+<Tip>
+  The skill teaches your coding agent all 47+ React best practice rules so it can help you fix issues automatically.
+</Tip>
+
+Supported coding agents:
+- Cursor
+- Claude Code
+- Amp Code
+- Codex
+- Gemini CLI
+- OpenCode
+- Windsurf
+- Antigravity
+
+## Workspace Projects
+
+React Doctor automatically detects monorepo workspaces. When you run it in a monorepo root, it will:
+
+1. Detect all workspace projects
+2. Prompt you to select which projects to scan
+3. Scan each selected project independently
+
+<CodeGroup>
+```bash Terminal
+npx -y react-doctor@latest .
+```
+
+```bash Output
+react-doctor v0.0.29
+
+Detected workspace with 3 projects:
+  1. packages/web
+  2. packages/api
+  3. packages/shared
+
+? Select projects to scan: (Press <space> to select, <a> to toggle all)
+```
+</CodeGroup>
+
+### Skip Project Selection
+
+To scan all projects without prompting:
+
+```bash
+npx -y react-doctor@latest . --yes
+```
+
+### Scan Specific Projects
+
+To scan specific projects by name:
+
+```bash
+npx -y react-doctor@latest . --project web,shared
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Run your first scan and understand the output
+  </Card>
+  <Card title="Configuration" icon="gear" href="/usage/configuration">
+    Customize React Doctor for your project
+  </Card>
+</CardGroup>

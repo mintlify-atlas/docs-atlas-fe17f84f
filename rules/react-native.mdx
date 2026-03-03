@@ -1,0 +1,338 @@
+---
+title: React Native Rules
+description: React Native and Expo platform-specific best practices
+---
+
+These 8 rules are automatically enabled when React Doctor detects a React Native or Expo project. They catch platform-specific issues and enforce mobile best practices.
+
+## Rules
+
+<Accordion title="rn-no-raw-text" icon="circle-xmark">
+  **Severity:** error  
+  **Rule ID:** `react-doctor/rn-no-raw-text`
+
+  Requires text to be wrapped in `<Text>` components. Raw text outside `<Text>` crashes on React Native.
+
+  **Why it crashes:**
+  React Native doesn't support raw text nodes like web React. All text must be in `<Text>` components.
+
+  **Bad:**
+  ```tsx
+  <View>Hello world</View>
+  <View>{userName}</View>
+  <View>{123}</View>
+  ```
+
+  **Good:**
+  ```tsx
+  <View>
+    <Text>Hello world</Text>
+  </View>
+  <View>
+    <Text>{userName}</Text>
+  </View>
+  <View>
+    <Text>{123}</Text>
+  </View>
+  ```
+
+  <Note>
+  This rule is automatically disabled in files with the `'use dom'` directive for React Native's DOM components.
+  </Note>
+</Accordion>
+
+<Accordion title="rn-no-deprecated-modules" icon="circle-xmark">
+  **Severity:** error  
+  **Rule ID:** `react-doctor/rn-no-deprecated-modules`
+
+  Detects removed React Native modules and suggests community alternatives.
+
+  **Deprecated modules:**
+  - `AsyncStorage` → `@react-native-async-storage/async-storage`
+  - `Picker` → `@react-native-picker/picker`
+  - `DatePickerIOS` → `@react-native-community/datetimepicker`
+  - `SafeAreaView` → `react-native-safe-area-context`
+  - `WebView` → `react-native-webview`
+  - `NetInfo` → `@react-native-community/netinfo`
+  - `Clipboard` → `@react-native-clipboard/clipboard`
+
+  **Bad:**
+  ```tsx
+  import { AsyncStorage, WebView } from 'react-native';
+  ```
+
+  **Good:**
+  ```tsx
+  import AsyncStorage from '@react-native-async-storage/async-storage';
+  import { WebView } from 'react-native-webview';
+  ```
+</Accordion>
+
+<Accordion title="rn-no-legacy-expo-packages" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/rn-no-legacy-expo-packages`
+
+  Detects deprecated Expo packages and suggests modern alternatives.
+
+  **Deprecated packages:**
+  - `expo-av` → `expo-audio` and `expo-video`
+  - `expo-permissions` → Module-specific permission APIs
+  - `@expo/vector-icons` → `expo-image` with SF Symbols
+
+  **Bad:**
+  ```tsx
+  import { Audio } from 'expo-av';
+  import * as Permissions from 'expo-permissions';
+  ```
+
+  **Good:**
+  ```tsx
+  import { Audio } from 'expo-audio';
+  import { Camera } from 'expo-camera';
+  
+  // Request permissions from module
+  await Camera.requestCameraPermissionsAsync();
+  ```
+</Accordion>
+
+<Accordion title="rn-no-dimensions-get" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/rn-no-dimensions-get`
+
+  Prevents using `Dimensions.get()` which doesn't update on screen rotation. Use `useWindowDimensions()` for reactive layouts.
+
+  **Why it's bad:**
+  - `Dimensions.get()` returns static values
+  - Doesn't update on device rotation
+  - Requires manual event listeners
+  - `addEventListener` was removed in RN 0.72
+
+  **Bad:**
+  ```tsx
+  const { width, height } = Dimensions.get('window');
+  
+  // This was removed!
+  Dimensions.addEventListener('change', callback);
+  ```
+
+  **Good:**
+  ```tsx
+  import { useWindowDimensions } from 'react-native';
+  
+  function Component() {
+    const { width, height } = useWindowDimensions();
+    // Automatically updates on rotation
+  }
+  ```
+</Accordion>
+
+<Accordion title="rn-no-inline-flatlist-renderitem" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/rn-no-inline-flatlist-renderitem`
+
+  Prevents inline `renderItem` functions on list components. Inline functions create new references every render, breaking list optimization.
+
+  **Why it's bad:**
+  - New function reference every render
+  - Prevents PureComponent optimization
+  - List items re-render unnecessarily
+  - Poor scroll performance
+
+  **Bad:**
+  ```tsx
+  <FlatList
+    data={items}
+    renderItem={({ item }) => <Item data={item} />}
+  />
+  ```
+
+  **Good:**
+  ```tsx
+  // Extract to named function
+  const renderItem = ({ item }) => <Item data={item} />;
+  
+  <FlatList data={items} renderItem={renderItem} />
+  
+  // Or useCallback
+  const renderItem = useCallback(
+    ({ item }) => <Item data={item} />,
+    []
+  );
+  ```
+
+  Applies to: `FlatList`, `SectionList`, `VirtualizedList`, `FlashList`
+</Accordion>
+
+<Accordion title="rn-no-legacy-shadow-styles" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/rn-no-legacy-shadow-styles`
+
+  Suggests using `boxShadow` instead of legacy shadow properties for the new React Native architecture.
+
+  **Legacy properties:**
+  - `shadowColor`
+  - `shadowOffset`
+  - `shadowOpacity`
+  - `shadowRadius`
+  - `elevation` (Android)
+
+  **Bad:**
+  ```tsx
+  <View style={{
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  }} />
+  ```
+
+  **Good:**
+  ```tsx
+  <View style={{
+    boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
+  }} />
+  ```
+
+  <Note>
+  `boxShadow` is cross-platform and works on both iOS and Android with the new architecture.
+  </Note>
+</Accordion>
+
+<Accordion title="rn-prefer-reanimated" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/rn-prefer-reanimated`
+
+  Suggests using `react-native-reanimated` instead of built-in `Animated` API for performant animations.
+
+  **Why Reanimated is better:**
+  - Runs on UI thread (60fps even with blocked JS thread)
+  - Better gesture handling
+  - More powerful API
+  - Smoother animations
+
+  **Bad:**
+  ```tsx
+  import { Animated } from 'react-native';
+  
+  const anim = new Animated.Value(0);
+  Animated.timing(anim, { toValue: 1 }).start();
+  ```
+
+  **Good:**
+  ```tsx
+  import Animated, { 
+    useSharedValue,
+    useAnimatedStyle,
+    withTiming 
+  } from 'react-native-reanimated';
+  
+  function Component() {
+    const opacity = useSharedValue(0);
+    
+    const animatedStyle = useAnimatedStyle(() => ({
+      opacity: withTiming(opacity.value)
+    }));
+    
+    return <Animated.View style={animatedStyle} />;
+  }
+  ```
+</Accordion>
+
+<Accordion title="rn-no-single-element-style-array" icon="triangle-exclamation">
+  **Severity:** warn  
+  **Rule ID:** `react-doctor/rn-no-single-element-style-array`
+
+  Prevents single-element style arrays which create unnecessary array allocations.
+
+  **Bad:**
+  ```tsx
+  <View style={[styles.container]} />
+  <Text style={[{ color: 'red' }]} />
+  ```
+
+  **Good:**
+  ```tsx
+  <View style={styles.container} />
+  <Text style={{ color: 'red' }} />
+  
+  // Arrays are fine with multiple styles
+  <View style={[styles.container, styles.active]} />
+  ```
+</Accordion>
+
+## React Native Best Practices
+
+### Performance
+- Use `FlatList` for long lists, not `ScrollView` with `.map()`
+- Implement `keyExtractor` and `getItemLayout` for lists
+- Use `React.memo()` for list items
+- Avoid inline functions in `renderItem`
+- Use `removeClippedSubviews` for very long lists
+
+### Layout
+- Use Flexbox (default in RN)
+- Avoid absolute positioning when possible
+- Use `useWindowDimensions()` for responsive layouts
+- Test on different screen sizes
+
+### Images
+```tsx
+// ✅ Optimized image loading
+import { Image } from 'expo-image';
+
+<Image
+  source={{ uri: 'https://...' }}
+  placeholder={blurhash}
+  contentFit="cover"
+  transition={200}
+/>
+```
+
+### Navigation
+```tsx
+// Use React Navigation
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
+const Stack = createNativeStackNavigator();
+```
+
+## Platform-Specific Code
+
+```tsx
+import { Platform } from 'react-native';
+
+// Platform check
+const styles = StyleSheet.create({
+  container: {
+    paddingTop: Platform.OS === 'ios' ? 20 : 0,
+  }
+});
+
+// Platform-specific files
+import Button from './Button'; // Automatically resolves:
+// - Button.ios.tsx
+// - Button.android.tsx
+// - Button.tsx (fallback)
+```
+
+## Testing on Device
+
+```bash
+# Expo
+npx expo start
+
+# React Native CLI
+npx react-native run-android
+npx react-native run-ios
+
+# Physical device testing
+# iOS: TestFlight
+# Android: Internal Testing on Play Console
+```
+
+## Related Rules
+
+- [Performance Rules](/rules/performance) - General performance patterns
+- [Architecture Rules](/rules/architecture) - Component structure

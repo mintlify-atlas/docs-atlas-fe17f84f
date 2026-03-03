@@ -1,0 +1,474 @@
+---
+title: Node.js API
+description: Use React Doctor programmatically in your Node.js applications
+---
+
+## Installation
+
+Install React Doctor as a dependency:
+
+```bash
+npm install react-doctor
+```
+
+## Basic Usage
+
+```typescript
+import { diagnose } from 'react-doctor';
+
+const result = await diagnose('./my-project');
+console.log(`Score: ${result.score?.score}`);
+console.log(`Found ${result.diagnostics.length} issues`);
+```
+
+## API Reference
+
+### `diagnose()`
+
+The main function for scanning a React codebase.
+
+```typescript
+diagnose(directory: string, options?: DiagnoseOptions): Promise<DiagnoseResult>
+```
+
+<ParamField path="directory" type="string" required>
+  Absolute or relative path to the project directory to scan
+</ParamField>
+
+<ParamField path="options" type="DiagnoseOptions">
+  Optional configuration for the scan
+</ParamField>
+
+**Returns:** `Promise<DiagnoseResult>`
+
+## Types
+
+### `DiagnoseOptions`
+
+```typescript
+interface DiagnoseOptions {
+  lint?: boolean;          // Enable linting (default: true)
+  deadCode?: boolean;      // Enable dead code detection (default: true)
+  includePaths?: string[]; // Specific files to scan (for diff mode)
+}
+```
+
+<ParamField path="lint" type="boolean" default="true">
+  Enable or disable linting checks using oxlint
+</ParamField>
+
+<ParamField path="deadCode" type="boolean" default="true">
+  Enable or disable dead code detection using Knip
+</ParamField>
+
+<ParamField path="includePaths" type="string[]" default="[]">
+  Array of file paths to scan. When provided, enables diff mode and scans only the specified files. Dead code detection is automatically disabled in diff mode.
+</ParamField>
+
+### `DiagnoseResult`
+
+```typescript
+interface DiagnoseResult {
+  diagnostics: Diagnostic[];         // Array of detected issues
+  score: ScoreResult | null;         // Health score (null if offline)
+  project: ProjectInfo;              // Project metadata
+  elapsedMilliseconds: number;       // Scan duration
+}
+```
+
+<ParamField path="diagnostics" type="Diagnostic[]">
+  Array of all detected issues, each containing file path, rule, severity, message, and location information
+</ParamField>
+
+<ParamField path="score" type="ScoreResult | null">
+  Health score object with score (0-100) and label. `null` when telemetry is unavailable.
+</ParamField>
+
+<ParamField path="project" type="ProjectInfo">
+  Project metadata including React version, framework, TypeScript status, and file count
+</ParamField>
+
+<ParamField path="elapsedMilliseconds" type="number">
+  Total time taken for the scan in milliseconds
+</ParamField>
+
+### `Diagnostic`
+
+```typescript
+interface Diagnostic {
+  filePath: string;      // Relative path to the file
+  plugin: string;        // Plugin name (e.g., "react-doctor", "oxlint")
+  rule: string;          // Rule identifier
+  severity: "error" | "warning";
+  message: string;       // Issue description
+  help: string;          // Suggestion for fixing
+  line: number;          // Line number (0 if not available)
+  column: number;        // Column number (0 if not available)
+  category: string;      // Issue category
+  weight?: number;       // Severity weight for scoring
+}
+```
+
+### `ScoreResult`
+
+```typescript
+interface ScoreResult {
+  score: number;         // Health score (0-100)
+  label: string;         // Human-readable label (e.g., "Excellent", "Good")
+}
+```
+
+### `ProjectInfo`
+
+```typescript
+interface ProjectInfo {
+  rootDirectory: string;     // Absolute path to project root
+  projectName: string;       // Project name from package.json
+  reactVersion: string | null;
+  framework: Framework;      // Detected framework
+  hasTypeScript: boolean;
+  hasReactCompiler: boolean;
+  sourceFileCount: number;   // Total source files in project
+}
+```
+
+### `Framework`
+
+```typescript
+type Framework = 
+  | "nextjs"
+  | "vite" 
+  | "cra"
+  | "remix"
+  | "gatsby"
+  | "expo"
+  | "react-native"
+  | "unknown";
+```
+
+### `ReactDoctorConfig`
+
+```typescript
+interface ReactDoctorConfig {
+  ignore?: {
+    rules?: string[];      // Rules to ignore
+    files?: string[];      // File patterns to ignore
+  };
+  lint?: boolean;
+  deadCode?: boolean;
+  verbose?: boolean;
+  diff?: boolean | string; // Diff mode configuration
+  failOn?: "error" | "warning" | "none";
+}
+```
+
+## Examples
+
+### Basic Scan
+
+```typescript
+import { diagnose } from 'react-doctor';
+
+async function scanProject() {
+  const result = await diagnose('./src');
+  
+  console.log(`Project: ${result.project.projectName}`);
+  console.log(`Framework: ${result.project.framework}`);
+  console.log(`React: ${result.project.reactVersion}`);
+  console.log(`Score: ${result.score?.score}/100`);
+  console.log(`Issues: ${result.diagnostics.length}`);
+  console.log(`Scan time: ${result.elapsedMilliseconds}ms`);
+}
+
+scanProject();
+```
+
+### Lint Only
+
+Disable dead code detection:
+
+```typescript
+import { diagnose } from 'react-doctor';
+
+const result = await diagnose('./src', {
+  lint: true,
+  deadCode: false
+});
+
+console.log(`Found ${result.diagnostics.length} linting issues`);
+```
+
+### Diff Mode
+
+Scan only specific files (useful for pre-commit hooks):
+
+```typescript
+import { diagnose, getDiffInfo, filterSourceFiles } from 'react-doctor';
+
+const diffInfo = getDiffInfo('./src', 'main');
+if (diffInfo) {
+  const changedFiles = filterSourceFiles(diffInfo.changedFiles);
+  
+  const result = await diagnose('./src', {
+    includePaths: changedFiles
+  });
+  
+  console.log(`Scanned ${changedFiles.length} changed files`);
+  console.log(`Found ${result.diagnostics.length} issues`);
+}
+```
+
+### Process Diagnostics
+
+Group and analyze diagnostics:
+
+```typescript
+import { diagnose } from 'react-doctor';
+
+const result = await diagnose('./src');
+
+// Group by severity
+const errors = result.diagnostics.filter(d => d.severity === 'error');
+const warnings = result.diagnostics.filter(d => d.severity === 'warning');
+
+console.log(`Errors: ${errors.length}`);
+console.log(`Warnings: ${warnings.length}`);
+
+// Group by category
+const byCategory = result.diagnostics.reduce((acc, d) => {
+  acc[d.category] = (acc[d.category] || 0) + 1;
+  return acc;
+}, {} as Record<string, number>);
+
+console.log('Issues by category:', byCategory);
+
+// Group by file
+const byFile = result.diagnostics.reduce((acc, d) => {
+  if (!acc[d.filePath]) acc[d.filePath] = [];
+  acc[d.filePath].push(d);
+  return acc;
+}, {} as Record<string, Diagnostic[]>);
+
+for (const [file, diagnostics] of Object.entries(byFile)) {
+  console.log(`${file}: ${diagnostics.length} issues`);
+}
+```
+
+### Custom Reporting
+
+Generate custom reports:
+
+```typescript
+import { diagnose } from 'react-doctor';
+import fs from 'fs';
+
+const result = await diagnose('./src');
+
+// Generate JSON report
+fs.writeFileSync(
+  'react-doctor-report.json',
+  JSON.stringify(result, null, 2)
+);
+
+// Generate CSV report
+const csv = [
+  'File,Rule,Severity,Line,Message',
+  ...result.diagnostics.map(d => 
+    `"${d.filePath}","${d.rule}",${d.severity},${d.line},"${d.message}"`
+  )
+].join('\n');
+
+fs.writeFileSync('react-doctor-report.csv', csv);
+
+console.log('Reports generated!');
+```
+
+### CI Integration
+
+Use in a Node.js CI script:
+
+```typescript
+import { diagnose } from 'react-doctor';
+
+async function ciCheck() {
+  try {
+    const result = await diagnose(process.cwd());
+    
+    const errors = result.diagnostics.filter(d => d.severity === 'error');
+    
+    if (errors.length > 0) {
+      console.error(`❌ Found ${errors.length} errors`);
+      
+      for (const error of errors) {
+        console.error(
+          `${error.filePath}:${error.line} - ${error.message}`
+        );
+      }
+      
+      process.exit(1);
+    }
+    
+    console.log(`✅ No errors found. Score: ${result.score?.score}/100`);
+  } catch (error) {
+    console.error('Scan failed:', error);
+    process.exit(1);
+  }
+}
+
+ciCheck();
+```
+
+### Pre-commit Hook
+
+Create a pre-commit hook using Husky:
+
+```typescript pre-commit.ts
+import { diagnose, getDiffInfo, filterSourceFiles } from 'react-doctor';
+import { execSync } from 'child_process';
+
+async function preCommitCheck() {
+  // Get staged files
+  const staged = execSync('git diff --cached --name-only --diff-filter=ACM')
+    .toString()
+    .trim()
+    .split('\n')
+    .filter(f => /\.(ts|tsx|js|jsx)$/.test(f));
+  
+  if (staged.length === 0) {
+    console.log('No staged files to check');
+    return;
+  }
+  
+  console.log(`Checking ${staged.length} staged files...`);
+  
+  const result = await diagnose(process.cwd(), {
+    includePaths: staged
+  });
+  
+  const errors = result.diagnostics.filter(d => d.severity === 'error');
+  
+  if (errors.length > 0) {
+    console.error(`\n❌ Found ${errors.length} errors in staged files:\n`);
+    
+    for (const error of errors) {
+      console.error(`  ${error.filePath}:${error.line}`);
+      console.error(`    ${error.message}`);
+      console.error(`    ${error.help}\n`);
+    }
+    
+    process.exit(1);
+  }
+  
+  console.log('✅ All staged files passed React Doctor checks');
+}
+
+preCommitCheck();
+```
+
+### Watch Mode
+
+Implement file watching:
+
+```typescript
+import { diagnose } from 'react-doctor';
+import chokidar from 'chokidar';
+import path from 'path';
+
+const srcDir = path.resolve('./src');
+let isScanning = false;
+
+async function scanChangedFiles(changedFiles: string[]) {
+  if (isScanning) return;
+  isScanning = true;
+  
+  try {
+    const result = await diagnose(srcDir, {
+      includePaths: changedFiles
+    });
+    
+    console.clear();
+    console.log(`Scanned ${changedFiles.length} files`);
+    console.log(`Issues: ${result.diagnostics.length}`);
+    
+    if (result.diagnostics.length > 0) {
+      for (const d of result.diagnostics) {
+        console.log(
+          `${d.severity === 'error' ? '✗' : '⚠'} ${d.filePath}:${d.line} - ${d.message}`
+        );
+      }
+    } else {
+      console.log('✅ No issues found');
+    }
+  } finally {
+    isScanning = false;
+  }
+}
+
+const watcher = chokidar.watch('src/**/*.{ts,tsx,js,jsx}', {
+  ignoreInitial: true
+});
+
+const changedFiles = new Set<string>();
+let debounceTimer: NodeJS.Timeout;
+
+watcher.on('all', (event, filePath) => {
+  changedFiles.add(path.relative(srcDir, filePath));
+  
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    scanChangedFiles(Array.from(changedFiles));
+    changedFiles.clear();
+  }, 1000);
+});
+
+console.log('Watching for changes...');
+```
+
+## Helper Functions
+
+### `getDiffInfo()`
+
+Get git diff information:
+
+```typescript
+import { getDiffInfo } from 'react-doctor';
+
+const diffInfo = getDiffInfo('./src', 'main');
+if (diffInfo) {
+  console.log(`Current branch: ${diffInfo.currentBranch}`);
+  console.log(`Base branch: ${diffInfo.baseBranch}`);
+  console.log(`Changed files: ${diffInfo.changedFiles.length}`);
+}
+```
+
+### `filterSourceFiles()`
+
+Filter for React/TypeScript source files:
+
+```typescript
+import { filterSourceFiles } from 'react-doctor';
+
+const allFiles = ['src/App.tsx', 'README.md', 'src/utils.ts'];
+const sourceFiles = filterSourceFiles(allFiles);
+// Returns: ['src/App.tsx', 'src/utils.ts']
+```
+
+## Error Handling
+
+```typescript
+import { diagnose } from 'react-doctor';
+
+try {
+  const result = await diagnose('./src');
+  console.log(`Scan completed: ${result.diagnostics.length} issues`);
+} catch (error) {
+  if (error instanceof Error) {
+    if (error.message.includes('No React dependency')) {
+      console.error('This is not a React project');
+    } else {
+      console.error(`Scan failed: ${error.message}`);
+    }
+  }
+  process.exit(1);
+}
+```
